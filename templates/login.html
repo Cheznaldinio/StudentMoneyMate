@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Money Mate</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='image1.jpg') }}');
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input[type="email"], input[type="password"] {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input[type="email"]:focus, input[type="password"]:focus {
+            border-color: #a0a0a0;
+        }
+        input[type="submit"] {
+            padding: 10px;
+            margin: 20px 0;
+            border: none;
+            border-radius: 4px;
+            background-color: #5a67d8;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #434190;
+        }
+        .create-account {
+            margin-top: 20px;
+        }
+        .create-account a {
+            color: #5a67d8;
+            text-decoration: none;
+        }
+        .create-account a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Money Mate &#169;</h1>
+        <form action="login" method="POST">
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="submit" value="Login">
+        </form>
+        <div class="create-account">
+            <p>New? <a href="register">Create account</a></p>
+        </div>
+    </div>
+</body>
+</html>
