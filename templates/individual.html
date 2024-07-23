@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Money Mate - Individual</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 800px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 24px;
+        }
+        .tab {
+            display: inline-block;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .group-info, .bills, .owed-info, .personal-account, .chart, .buttons {
+            margin-top: 20px;
+        }
+        .bills table, .owed-info table {
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .buttons button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <iframe src="Header.html" style="width: 100%; height: 100px; border: none;"></iframe>
+    <div class="container">
+        <div class="group-info">
+            <p><strong>Chris Brown</strong></p>
+        </div>
+        <div class="bills">
+            <table>
+                <tr>
+                    <th>Bills</th>
+                    <th>Personal Cost</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                </tr>
+                <tr>
+                    <td>Rent</td>
+                    <td>£300</td>
+                    <td>No</td>
+                    <td>10/12/23</td>
+                </tr>
+                <tr>
+                    <td>Water</td>
+                    <td>£50</td>
+                    <td>Yes</td>
+                    <td>4/12/23</td>
+                </tr>
+                <tr>
+                    <td>Electricity</td>
+                    <td>£20</td>
+                    <td>No</td>
+                    <td>23/12/23</td>
+                </tr>
+            </table>
+        </div>
+        <div class="owed-info">
+            <p>You owe Emily £320</p>
+            <p>You owe Kevin £6</p>
+            <p>Michael owes you £4</p>
+            <p>You owe Kevin £8</p>
+            <p>You owe Sarah £14.50</p>
+        </div>
+        <div class="personal-account">
+            <p><strong>PERSONAL ACCOUNT:</strong></p>
+            <p>£282.12</p>
+            <p><strong>SAVINGS:</strong></p>
+            <p>£492.19</p>
+            <p><strong>Debt:</strong></p>
+            <p>£102.89</p>
+        </div>
+        <div class="chart">
+            <img src="chart.png" alt="Chart Image" style="width: 100%; height: auto;">
+        </div>
+        <div class="buttons">
+            <button>UPDATE</button>
+        </div>
+    </div>
+</body>
+</html>

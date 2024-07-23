@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 import logging
 import random
-
 from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
 import os
@@ -28,6 +27,21 @@ db.init_app(app)
 def index():
     logging.info("Entry Point")
     return render_template('login.html')
+
+@app.route('/home', methods=['GET'])
+def home():
+    logging.info("Home Page")
+    return render_template('home.html')
+
+@app.route('/individual', methods=['GET'])
+def individual():
+    logging.info("Individual Page")
+    return render_template('individual.html')
+
+@app.route('/account', methods=['GET'])
+def account():
+    logging.info("Account Page")
+    return render_template('account.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
