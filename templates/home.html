@@ -66,8 +66,9 @@
             {% if group_message %}
                 <p>{{ group_message }}</p>
             {% else %}
-                <p><strong>Group:</strong> {{ group_names | join(', ') }}</p>
+                <p><strong>Flat Group:</strong> {{ flat_group_names | join(', ') }}</p>
                 <p><strong>Manager:</strong> {{ manager_name }}</p>
+                <p><strong>Non-flat Groups:</strong> {{ non_flat_group_names | join(', ') }}</p>
             {% endif %}
         </div>
         <h2>Flat Bills</h2>
@@ -85,14 +86,55 @@
                     <td>{{ bill.bill_name }}</td>
                     <td>£{{ bill.amount }}</td>
                     <td>£{{ '%.2f' % bill.personal_cost }}</td>
-                    <td>{{ 'Yes' if bill.paid else 'No' }}</td>
+                    <td>{{ bill.paid }}</td>
                     <td>{{ bill.due_date.strftime('%d/%m/%Y') }}</td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
         <div class="owed-info">
-            <p><strong>Owed:</strong> £{{ '%.2f' % total_owed }} to {{ manager_name }}</p>
+            <p><strong>Owed:</strong> £{{ '%.2f' % total_flat_owed }} to {{ manager_name }}</p>
+        </div>
+        <h2>Non-flat Bills</h2>
+        <div class="bills">
+            <table>
+                <tr>
+                    <th>Bills</th>
+                    <th>Group Members</th>
+                    <th>Group Manager</th>
+                    <th>Total Cost</th>
+                    <th>Your Share</th>
+                    <th>Paid</th>
+                </tr>
+                {% for bill in non_flat_bills %}
+                <tr>
+                    <td>{{ bill.bill_name }}</td>
+                    <td>{{ bill.group_members }}</td>
+                    <td>{{ bill.group_manager }}</td>
+                    <td>£{{ bill.amount }}</td>
+                    <td>£{{ '%.2f' % bill.personal_cost }}</td>
+                    <td>{{ bill.paid }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="owed-info">
+            <h3>Individual Amounts Owed</h3>
+            <table>
+                <tr>
+                    <th>Manager</th>
+                    <th>Amount Owed</th>
+                </tr>
+                {% for manager, amount in individual_owed.items() %}
+                <tr>
+                    <td>{{ manager }}</td>
+                    <td>£{{ '%.2f' % amount }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="owed-info">
+            <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
         </div>
         <div class="buttons">
             <button>Add a Split</button>
@@ -100,4 +142,3 @@
         </div>
     </div>
 </body>
-</html>
