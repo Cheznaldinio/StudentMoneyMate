@@ -81,25 +81,47 @@ def home():
     user = Users.query.get(user_id)
     logging.info(f"User: {user}")
 
-    # Query group memberships
-    group_memberships = GroupMembers.query.filter_by(user_id=user_id).all()
-    logging.info(f"Group Memberships: {group_memberships}")
+    # Query group memberships and find flat groups
+    flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id)\
+                              .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
+    logging.info(f"Flat Groups: {flat_groups}")
 
-    group_ids = [membership.group_id for membership in group_memberships]
-    logging.info(f"Group IDs: {group_ids}")
+    if not flat_groups:
+        group_message = "You are not a member of any flat groups."
+        manager_name = "N/A"
+        return render_template('home.html', user=user, group_names=[], group_message=group_message, flat_bills=[], total_owed=0.0, manager_name=manager_name)
 
-    groups = Groups.query.filter(Groups.group_id.in_(group_ids)).all()
-    logging.info(f"Groups: {groups}")
+    # Get the first manager name from the flat groups
+    manager = Users.query.get(flat_groups[0].manager_id)
+    manager_name = manager.user_name.replace('_', ' ').title() if manager else "N/A"
+    logging.info(f"Manager Name: {manager_name}")
 
-    group_names = [group.group_name for group in groups]
-    logging.info(f"Group Names: {group_names}")
+    # Prepare group names and flat bills data
+    group_names = [group.group_name for group in flat_groups]
+    flat_bills_data = []
+    total_owed = 0.0
 
-    if not group_names:
-        group_message = "You are not a member of any groups."
-    else:
-        group_message = None
+    for group in flat_groups:
+        bills = Bills.query.filter_by(group_id=group.group_id).all()
+        for bill in bills:
+            logging.info(f"Bill: {bill}")
+            num_members = GroupMembers.query.filter_by(group_id=group.group_id).count()
+            personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
+            total_owed += personal_cost
+            flat_bills_data.append({
+                'bill_name': bill.bill_name,
+                'amount': bill.amount,
+                'due_date': bill.start_date,
+                'group_id': bill.group_id,
+                'personal_cost': personal_cost,
+                'paid': "No"
+            })
 
-    return render_template('home.html', user=user, group_names=group_names, group_message=group_message)
+    return render_template('home.html', user=user, group_names=group_names, group_message=None, flat_bills=flat_bills_data, total_owed=total_owed, manager_name=manager_name)
+
+
+
+
 
 
 @app.route('/individual', methods=['GET'])

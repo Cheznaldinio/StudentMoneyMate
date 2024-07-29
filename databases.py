@@ -9,7 +9,7 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
                               'postgresql://postgres:postgres@localhost/StudentMoneyMate'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = True
+    #SQLALCHEMY_ECHO = True
 class Users(db.Model):
     user_id = db.Column(String(255), primary_key=True, nullable=True, server_default=text('NULL::character varying'))
     user_name = db.Column(String(255), nullable=False)
@@ -57,6 +57,7 @@ class Ledger(db.Model):
 
 class Bills(db.Model):
     bill_id = db.Column(String(255), primary_key=True)
+    bill_name = db.Column(String(255))
     group_id = db.Column(String(255), ForeignKey('groups.group_id'))
     amount = db.Column(Float)
     recurrence = db.Column(Boolean)
@@ -65,7 +66,7 @@ class Bills(db.Model):
     reoccurrences = db.Column(Integer)
 
     def __str__(self):
-        return (f"Bills: {self.bill_id}, {self.group_id}, {self.amount}, {self.recurrence}, "
+        return (f"Bills: {self.bill_id}, {self.bill_name}, {self.group_id}, {self.amount}, {self.recurrence}, "
                 f"{self.start_date}, {self.frequency}, {self.reoccurrences}")
 
 class GroupMembers(db.Model):

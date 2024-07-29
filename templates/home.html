@@ -67,9 +67,10 @@
                 <p>{{ group_message }}</p>
             {% else %}
                 <p><strong>Group:</strong> {{ group_names | join(', ') }}</p>
-                <p><strong>Manager:</strong> Emily Davis</p>
+                <p><strong>Manager:</strong> {{ manager_name }}</p>
             {% endif %}
         </div>
+        <h2>Flat Bills</h2>
         <div class="bills">
             <table>
                 <tr>
@@ -77,83 +78,21 @@
                     <th>Total Cost (monthly)</th>
                     <th>Personal Cost</th>
                     <th>Paid</th>
-                    <th>Due</th>
+                    <th>Due Date</th>
                 </tr>
+                {% for bill in flat_bills %}
                 <tr>
-                    <td>Rent</td>
-                    <td>£1800</td>
-                    <td>£300</td>
-                    <td>No</td>
-                    <td>10/12/23</td>
+                    <td>{{ bill.bill_name }}</td>
+                    <td>£{{ bill.amount }}</td>
+                    <td>£{{ '%.2f' % bill.personal_cost }}</td>
+                    <td>{{ 'Yes' if bill.paid else 'No' }}</td>
+                    <td>{{ bill.due_date.strftime('%d/%m/%Y') }}</td>
                 </tr>
-                <tr>
-                    <td>Water</td>
-                    <td>£300</td>
-                    <td>£50</td>
-                    <td>Yes</td>
-                    <td>4/12/23</td>
-                </tr>
-                <tr>
-                    <td>Electricity</td>
-                    <td>£120</td>
-                    <td>£20</td>
-                    <td>No</td>
-                    <td>23/12/23</td>
-                </tr>
+                {% endfor %}
             </table>
         </div>
         <div class="owed-info">
-            <p><strong>Owed:</strong> £320 to Emily</p>
-            <table>
-                <tr>
-                    <th>Bills</th>
-                    <th>Members</th>
-                    <th>Team's bought</th>
-                    <th>Cost</th>
-                    <th>Share</th>
-                </tr>
-                <tr>
-                    <td>Hallway Toilet</td>
-                    <td>Mitchell, Kevin</td>
-                    <td>Toilet paper</td>
-                    <td>£10</td>
-                    <td>£5</td>
-                </tr>
-                <tr>
-                    <td>Soap</td>
-                    <td> - </td>
-                    <td> - </td>
-                    <td>£2</td>
-                    <td>£2</td>
-                </tr>
-                <tr>
-                    <td>Events</td>
-                    <td> - </td>
-                    <td> - </td>
-                    <td>£18</td>
-                    <td>£8</td>
-                </tr>
-                <tr>
-                    <td>Take-away</td>
-                    <td> - </td>
-                    <td> - </td>
-                    <td>£14.50</td>
-                    <td>£8</td>
-                </tr>
-            </table>
-            <p><strong>Owed:</strong></p>
-            <p>You owe Kevin £6</p>
-            <p>Michael owes you £4</p>
-        </div>
-        <div class="members">
-            <ul>
-                <li>Emily Davis</li>
-                <li>Michael Johnson</li>
-                <li>Sarah Williams</li>
-                <li>Kevin Anderson</li>
-                <li>Jennifer Martinez</li>
-                <li>Christopher Brown</li>
-            </ul>
+            <p><strong>Owed:</strong> £{{ '%.2f' % total_owed }} to {{ manager_name }}</p>
         </div>
         <div class="buttons">
             <button>Add a Split</button>
