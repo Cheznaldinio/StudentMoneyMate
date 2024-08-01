@@ -1,8 +1,9 @@
+import random
+import string
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 import logging
 import os
 from databases import db, Users, Groups, Accounts, Ledger, Bills, Config, GroupMembers
-from uuid import uuid4
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,6 +20,9 @@ db.init_app(app)
 # Ensure the database tables are created
 with app.app_context():
     db.create_all()
+
+def generate_hex_id(prefix):
+    return f"{prefix}{''.join(random.choices('0123456789ABCDEF', k=6))}"
 
 @app.route('/', methods=['GET'])
 def index():
@@ -79,7 +83,8 @@ def create_account():
             return redirect(url_for('create'))
 
         # Create new user
-        new_user = Users(user_id=str(uuid4()), user_name=name, email=email, password=password)
+        new_user_id = generate_hex_id('user')
+        new_user = Users(user_id=new_user_id, user_name=name, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
 
@@ -114,32 +119,32 @@ def home():
                                   .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
     logging.info(f"Non-flat Groups: {non_flat_groups}")
 
-    if not flat_groups:
-        return render_template('home.html', flat_groups=flat_groups, non_flat_groups=non_flat_groups)
-
-    manager = Users.query.get(flat_groups[0].manager_id)
-    manager_name = manager.user_name.replace('_', ' ').title() if manager else "N/A"
-    logging.info(f"Manager Name: {manager_name}")
-
-    flat_group_names = [group.group_name for group in flat_groups]
+    manager_name = "N/A"
+    flat_group_names = []
     flat_bills_data = []
     total_flat_owed = 0.0
+    if flat_groups:
+        manager = Users.query.get(flat_groups[0].manager_id)
+        manager_name = manager.user_name.replace('_', ' ').title() if manager else "N/A"
+        logging.info(f"Manager Name: {manager_name}")
 
-    for group in flat_groups:
-        bills = Bills.query.filter_by(group_id=group.group_id).all()
-        for bill in bills:
-            logging.info(f"Bill: {bill}")
-            num_members = GroupMembers.query.filter_by(group_id=group.group_id).count()
-            personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
-            total_flat_owed += personal_cost
-            flat_bills_data.append({
-                'bill_name': bill.bill_name,
-                'amount': bill.amount,
-                'due_date': bill.start_date,
-                'group_id': bill.group_id,
-                'personal_cost': personal_cost,
-                'paid': "No"
-            })
+        flat_group_names = [group.group_name for group in flat_groups]
+
+        for group in flat_groups:
+            bills = Bills.query.filter_by(group_id=group.group_id).all()
+            for bill in bills:
+                logging.info(f"Bill: {bill}")
+                num_members = GroupMembers.query.filter_by(group_id=group.group_id).count()
+                personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
+                total_flat_owed += personal_cost
+                flat_bills_data.append({
+                    'bill_name': bill.bill_name,
+                    'amount': bill.amount,
+                    'due_date': bill.start_date,
+                    'group_id': bill.group_id,
+                    'personal_cost': personal_cost,
+                    'paid': "No"
+                })
 
     non_flat_group_names = [group.group_name for group in non_flat_groups]
     non_flat_bills_data = []
@@ -206,7 +211,8 @@ def add_split():
         else:
             new_group_name = request.form.get('newGroupName')
             selected_users = request.form.getlist('selectedUsers')
-            group = Groups(group_id=str(uuid4()), group_name=new_group_name, manager_id=user_id, group_type=split_type)
+            new_group_id = generate_hex_id('group')
+            group = Groups(group_id=new_group_id, group_name=new_group_name, manager_id=user_id, group_type=split_type)
             db.session.add(group)
             db.session.commit()
 
@@ -270,11 +276,67 @@ def update_account():
         flash(f'Error updating account: {str(e)}', 'error')
         return redirect(url_for('account'))
 
-
 @app.route('/header', methods=['GET'])
 def header():
     logging.info("Header Page")
-    return render_template('header.html')
+    return render_template('base.html')
+
+@app.route('/join_flat', methods=['POST'])
+def join_flat():
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+
+    user_id = session['user_id']
+    flat_group_id = request.form.get('flatGroupId')
+
+    try:
+        existing_member = GroupMembers.query.filter_by(group_id=flat_group_id, user_id=user_id).first()
+        if existing_member:
+            flash('You are already a member of this flat group.', 'error')
+        else:
+            new_member = GroupMembers(group_id=flat_group_id, user_id=user_id)
+            db.session.add(new_member)
+            db.session.commit()
+            flash('Successfully joined the flat group!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error joining flat group: {str(e)}', 'error')
+
+    return redirect(url_for('home'))
+
+@app.route('/create_flat', methods=['POST'])
+def create_flat():
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+
+    user_id = session['user_id']
+    flat_group_name = request.form.get('flatGroupName')
+
+    try:
+        new_group_id = generate_hex_id('group')
+        new_flat_group = Groups(group_id=new_group_id, group_name=flat_group_name, manager_id=user_id, group_type='flat')
+        db.session.add(new_flat_group)
+        db.session.commit()
+
+        new_group_member = GroupMembers(group_id=new_group_id, user_id=user_id)
+        db.session.add(new_group_member)
+        db.session.commit()
+
+        flash('Successfully created the flat group!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating flat group: {str(e)}', 'error')
+
+    return redirect(url_for('home'))
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,60 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Money Mate</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            width: 600px;
-            margin: 0 auto;
-            border: 1px solid #ccc;
-            padding: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            font-size: 24px;
-        }
-        .profile-section {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .profile-section img {
-            border-radius: 50%;
-            width: 100px;
-            height: 100px;
-        }
-        .profile-section div {
-            margin-left: 20px;
-        }
-        .details-section {
-            margin-bottom: 20px;
-        }
-        .details-section p {
-            margin: 5px 0;
-        }
-        .details-section p span {
-            font-weight: bold;
-        }
-        .buttons {
-            text-align: center;
-        }
-        .buttons button {
-            padding: 10px 20px;
-            margin: 5px;
-            cursor: pointer;
-        }
-        .edit-section {
-            display: none;
-        }
-    </style>
+{% extends "base.html" %}
+
+{% block title %}Student Money Mate{% endblock %}
+
+{% block content %}
+    <div class="header">
+        <h2>Account Manager</h2>
+    </div>
+    <div id="view-section">
+        <div class="profile-section">
+            <img src="{{ url_for('static', filename='profile.png') }}" alt="Profile Image">
+        </div>
+        <div class="details-section">
+            <h3>Personal Details</h3>
+            <p><span>Name:</span> {{ user.user_name }}</p>
+            <p><span>Email:</span> {{ user.email }}</p>
+            <p><span>Password:</span> ********</p>
+            <p><span>Email Notifications?</span></p>
+            <p>ON <input type="radio" name="notifications" checked disabled> OFF <input type="radio" name="notifications" disabled></p>
+        </div>
+        <div class="buttons">
+            <button type="button" onclick="toggleEdit()">Edit</button>
+        </div>
+        <div class="details-section">
+            <h3>Bank Details</h3>
+            <p><span>Full Name:</span> Christopher James Brown</p>
+            <p><span>Sort Code:</span> 12-34-56</p>
+            <p><span>Account Number:</span> 987654321</p>
+        </div>
+        <div class="buttons">
+            <button type="button">Add Bank Details</button>
+        </div>
+    </div>
+    <form method="POST" action="{{ url_for('update_account') }}">
+        <div id="edit-section" class="edit-section">
+            <div class="details-section">
+                <h3>Personal Details</h3>
+                <p><span>Name:</span> <input type="text" name="name" value="{{ user.user_name }}"></p>
+                <p><span>Email:</span> <input type="email" name="email" value="{{ user.email }}"></p>
+                <p><span>New Password:</span> <input type="password" name="new_password" placeholder="Leave blank to keep current password"></p>
+                <p><span>Previous Password:</span> <input type="password" name="previous_password" required></p>
+                <p><span>Email Notifications?</span></p>
+                <p>ON <input type="radio" name="notifications" checked> OFF <input type="radio" name="notifications"></p>
+            </div>
+            <div class="buttons">
+                <button type="submit">SAVE</button>
+                <button type="button" onclick="toggleEdit()">CANCEL</button>
+            </div>
+            <div class="details-section">
+                <h3>Bank Details</h3>
+                <p><span>Full Name:</span> Christopher James Brown</p>
+                <p><span>Sort Code:</span> 12-34-56</p>
+                <p><span>Account Number:</span> 987654321</p>
+            </div>
+        </div>
+    </form>
+
     <script>
         function toggleEdit() {
             var editSection = document.getElementById('edit-section');
@@ -68,61 +68,4 @@
             }
         }
     </script>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Student Money Mate &copy;</h1>
-            <h2>Account Manager</h2>
-        </div>
-        <div id="view-section">
-            <div class="profile-section">
-                <img src="{{ url_for('static', filename='profile.png') }}" alt="Profile Image">
-            </div>
-            <div class="details-section">
-                <h3>Personal Details</h3>
-                <p><span>Name:</span> {{ user.user_name }}</p>
-                <p><span>Email:</span> {{ user.email }}</p>
-                <p><span>Password:</span> ********</p>
-                <p><span>Email Notifications?</span></p>
-                <p>ON <input type="radio" name="notifications" checked disabled> OFF <input type="radio" name="notifications" disabled></p>
-            </div>
-            <div class="buttons">
-                <button type="button" onclick="toggleEdit()">Edit</button>
-            </div>
-            <div class="details-section">
-                <h3>Bank Details</h3>
-                <p><span>Full Name:</span> Christopher James Brown</p>
-                <p><span>Sort Code:</span> 12-34-56</p>
-                <p><span>Account Number:</span> 987654321</p>
-            </div>
-            <div class="buttons">
-                <button type="button">Add Bank Details</button>
-            </div>
-        </div>
-        <form method="POST" action="{{ url_for('update_account') }}">
-            <div id="edit-section" class="edit-section">
-                <div class="details-section">
-                    <h3>Personal Details</h3>
-                    <p><span>Name:</span> <input type="text" name="name" value="{{ user.user_name }}"></p>
-                    <p><span>Email:</span> <input type="email" name="email" value="{{ user.email }}"></p>
-                    <p><span>New Password:</span> <input type="password" name="new_password" placeholder="Leave blank to keep current password"></p>
-                    <p><span>Previous Password:</span> <input type="password" name="previous_password" required></p>
-                    <p><span>Email Notifications?</span></p>
-                    <p>ON <input type="radio" name="notifications" checked> OFF <input type="radio" name="notifications"></p>
-                </div>
-                <div class="buttons">
-                    <button type="submit">SAVE</button>
-                    <button type="button" onclick="toggleEdit()">CANCEL</button>
-                </div>
-                <div class="details-section">
-                    <h3>Bank Details</h3>
-                    <p><span>Full Name:</span> Christopher James Brown</p>
-                    <p><span>Sort Code:</span> 12-34-56</p>
-                    <p><span>Account Number:</span> 987654321</p>
-                </div>
-            </div>
-        </form>
-    </div>
-</body>
-</html>
+{% endblock %}

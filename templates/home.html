@@ -1,100 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Money Mate</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            width: 800px;
-            margin: 0 auto;
-            border: 1px solid #ccc;
-            padding: 20px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header h1 {
-            font-size: 24px;
-        }
-        .tab {
-            display: inline-block;
-            margin-right: 10px;
-            font-weight: bold;
-        }
-        .group-info, .bills, .owed-info, .members, .buttons {
-            margin-top: 20px;
-        }
-        .bills table, .owed-info table, .members ul, .buttons {
-            width: 100%;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table, th, td {
-            border: 1px solid #000;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-        }
-        .members ul {
-            list-style: none;
-            padding: 0;
-        }
-        .members li {
-            margin: 5px 0;
-        }
-        .buttons button {
-            margin-right: 10px;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        /* Add styles for the modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgb(0,0,0);
-            background-color: rgba(0,0,0,0.4);
-            padding-top: 60px;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <iframe src="header" style="width: 100%; height: 100px; border: none;"></iframe>
-    <div class="container">
+{% extends "base.html" %}
+
+{% block title %}Student Money Mate{% endblock %}
+
+{% block content %}
+        {% if not flat_groups %}
+        <div class="buttons">
+            <button id="createFlatBtn">Create Flat Group</button>
+            <form action="{{ url_for('join_flat') }}" method="POST" style="display: inline;">
+                <input type="text" name="flatGroupId" placeholder="Enter Flat Group ID" required>
+                <button type="submit">Join Flat</button>
+            </form>
+        </div>
+        {% else %}
         <div class="group-info">
             {% if group_message %}
                 <p>{{ group_message }}</p>
@@ -106,6 +23,7 @@
         </div>
         <h2>Flat Bills</h2>
         <div class="bills">
+            {% if flat_bills %}
             <table>
                 <tr>
                     <th>Bills</th>
@@ -124,12 +42,16 @@
                 </tr>
                 {% endfor %}
             </table>
+            {% else %}
+            <p>No flat bills available.</p>
+            {% endif %}
         </div>
         <div class="owed-info">
             <p><strong>Owed:</strong> £{{ '%.2f' % total_flat_owed }} to {{ manager_name }}</p>
         </div>
         <h2>Non-flat Bills</h2>
         <div class="bills">
+            {% if non_flat_bills %}
             <table>
                 <tr>
                     <th>Bills</th>
@@ -150,6 +72,9 @@
                 </tr>
                 {% endfor %}
             </table>
+            {% else %}
+            <p>No non-flat bills available.</p>
+            {% endif %}
         </div>
         <div class="owed-info">
             <h3>Individual Amounts Owed</h3>
@@ -173,7 +98,21 @@
             <button id="addSplitBtn">Add a Split</button>
             <button>I have paid Someone</button>
         </div>
+        {% endif %}
     </div>
+
+<!-- Modal for Creating a Flat Group -->
+<div id="createFlatModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <form id="createFlatForm" action="{{ url_for('create_flat') }}" method="POST">
+            <label for="flatGroupName">Flat Group Name:</label>
+            <input type="text" id="flatGroupName" name="flatGroupName" required>
+            <br><br>
+            <button type="submit">Create Flat Group</button>
+        </form>
+    </div>
+</div>
 
 <!-- Modal for Adding a Split -->
 <div id="addSplitModal" class="modal">
@@ -230,40 +169,75 @@
 </div>
 
 <script>
-    // Get modal elements
-    var modal = document.getElementById("addSplitModal");
-    var btn = document.getElementById("addSplitBtn");
-    var span = document.getElementsByClassName("close")[0];
-    var existingGroupRadio = document.getElementById("existingGroup");
-    var newGroupRadio = document.getElementById("newGroup");
-    var newGroupUsersDiv = document.getElementById("newGroupUsers");
+    document.addEventListener("DOMContentLoaded", function() {
+        // Get modal elements
+        var addSplitModal = document.getElementById("addSplitModal");
+        var addSplitBtn = document.getElementById("addSplitBtn");
+        var addSplitSpan = addSplitModal.getElementsByClassName("close")[0];
 
-    // When the user clicks the button, open the modal
-    btn.onclick = function() {
-        modal.style.display = "block";
-    }
+        var createFlatModal = document.getElementById("createFlatModal");
+        var createFlatBtn = document.getElementById("createFlatBtn");
+        var createFlatSpan = createFlatModal.getElementsByClassName("close")[0];
 
-    // When the user clicks on <span> (x), close the modal
-    span.onclick = function() {
-        modal.style.display = "none";
-    }
+        var existingGroupRadio = document.getElementById("existingGroup");
+        var newGroupRadio = document.getElementById("newGroup");
+        var newGroupUsersDiv = document.getElementById("newGroupUsers");
 
-    // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
+        // Ensure elements are selected correctly
+        console.log(createFlatBtn, createFlatModal, createFlatSpan, addSplitBtn);
+
+        // When the user clicks the button, open the modal
+        if (addSplitBtn) {
+            addSplitBtn.onclick = function() {
+                console.log("Add Split Button Clicked");
+                addSplitModal.style.display = "block";
+            }
         }
-    }
 
-    // Show/Hide new group users selection based on radio button
-    existingGroupRadio.onclick = function() {
-        newGroupUsersDiv.style.display = "none";
-    }
+        if (createFlatBtn) {
+            createFlatBtn.onclick = function() {
+                console.log("Create Flat Button Clicked");
+                createFlatModal.style.display = "block";
+            }
+        }
 
-    newGroupRadio.onclick = function() {
-        newGroupUsersDiv.style.display = "block";
-    }
+        // When the user clicks on <span> (x), close the modal
+        if (addSplitSpan) {
+            addSplitSpan.onclick = function() {
+                addSplitModal.style.display = "none";
+            }
+        }
+
+        if (createFlatSpan) {
+            createFlatSpan.onclick = function() {
+                createFlatModal.style.display = "none";
+            }
+        }
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == addSplitModal) {
+                addSplitModal.style.display = "none";
+            } else if (event.target == createFlatModal) {
+                createFlatModal.style.display = "none";
+            }
+        }
+
+        // Show/Hide new group users selection based on radio button
+        if (existingGroupRadio) {
+            existingGroupRadio.onclick = function() {
+                newGroupUsersDiv.style.display = "none";
+            }
+        }
+
+        if (newGroupRadio) {
+            newGroupRadio.onclick = function() {
+                newGroupUsersDiv.style.display = "block";
+            }
+        }
+    });
 </script>
 
 </body>
 </html>
+{% endblock %}
