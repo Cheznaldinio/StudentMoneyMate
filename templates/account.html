@@ -51,7 +51,23 @@
             margin: 5px;
             cursor: pointer;
         }
+        .edit-section {
+            display: none;
+        }
     </style>
+    <script>
+        function toggleEdit() {
+            var editSection = document.getElementById('edit-section');
+            var viewSection = document.getElementById('view-section');
+            if (editSection.style.display === 'none') {
+                editSection.style.display = 'block';
+                viewSection.style.display = 'none';
+            } else {
+                editSection.style.display = 'none';
+                viewSection.style.display = 'block';
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -59,30 +75,54 @@
             <h1>Student Money Mate &copy;</h1>
             <h2>Account Manager</h2>
         </div>
-        <div class="profile-section">
-            <img src="profile.png" alt="Profile Image">
-            <div>
-                <p><a href="#">Edit</a></p>
+        <div id="view-section">
+            <div class="profile-section">
+                <img src="{{ url_for('static', filename='profile.png') }}" alt="Profile Image">
+            </div>
+            <div class="details-section">
+                <h3>Personal Details</h3>
+                <p><span>Name:</span> {{ user.user_name }}</p>
+                <p><span>Email:</span> {{ user.email }}</p>
+                <p><span>Password:</span> ********</p>
+                <p><span>Email Notifications?</span></p>
+                <p>ON <input type="radio" name="notifications" checked disabled> OFF <input type="radio" name="notifications" disabled></p>
+            </div>
+            <div class="buttons">
+                <button type="button" onclick="toggleEdit()">Edit</button>
+            </div>
+            <div class="details-section">
+                <h3>Bank Details</h3>
+                <p><span>Full Name:</span> Christopher James Brown</p>
+                <p><span>Sort Code:</span> 12-34-56</p>
+                <p><span>Account Number:</span> 987654321</p>
+            </div>
+            <div class="buttons">
+                <button type="button">Add Bank Details</button>
             </div>
         </div>
-        <div class="details-section">
-            <h3>Personal Details</h3>
-            <p><span>Name:</span> Christopher Brown</p>
-            <p><span>Email:</span> ChrisB2810@gmail.com</p>
-            <p><span>Password:</span> ********</p>
-            <p><span>Email Notifications?</span></p>
-            <p>ON <input type="radio" name="notifications" checked> OFF <input type="radio" name="notifications"></p>
-        </div>
-        <div class="details-section">
-            <h3>Bank Details</h3>
-            <p><span>Full Name:</span> Christopher James Brown</p>
-            <p><span>Sort Code:</span> 12-34-56</p>
-            <p><span>Account Number:</span> 987654321</p>
-        </div>
-        <div class="buttons">
-            <button>EDIT</button>
-            <button>SAVE</button>
-        </div>
+        <form method="POST" action="{{ url_for('update_account') }}">
+            <div id="edit-section" class="edit-section">
+                <div class="details-section">
+                    <h3>Personal Details</h3>
+                    <p><span>Name:</span> <input type="text" name="name" value="{{ user.user_name }}"></p>
+                    <p><span>Email:</span> <input type="email" name="email" value="{{ user.email }}"></p>
+                    <p><span>New Password:</span> <input type="password" name="new_password" placeholder="Leave blank to keep current password"></p>
+                    <p><span>Previous Password:</span> <input type="password" name="previous_password" required></p>
+                    <p><span>Email Notifications?</span></p>
+                    <p>ON <input type="radio" name="notifications" checked> OFF <input type="radio" name="notifications"></p>
+                </div>
+                <div class="buttons">
+                    <button type="submit">SAVE</button>
+                    <button type="button" onclick="toggleEdit()">CANCEL</button>
+                </div>
+                <div class="details-section">
+                    <h3>Bank Details</h3>
+                    <p><span>Full Name:</span> Christopher James Brown</p>
+                    <p><span>Sort Code:</span> 12-34-56</p>
+                    <p><span>Account Number:</span> 987654321</p>
+                </div>
+            </div>
+        </form>
     </div>
 </body>
 </html>

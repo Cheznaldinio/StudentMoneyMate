@@ -57,6 +57,39 @@
             padding: 10px 20px;
             cursor: pointer;
         }
+        /* Add styles for the modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -137,8 +170,100 @@
             <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
         </div>
         <div class="buttons">
-            <button>Add a Split</button>
+            <button id="addSplitBtn">Add a Split</button>
             <button>I have paid Someone</button>
         </div>
     </div>
+
+<!-- Modal for Adding a Split -->
+<div id="addSplitModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <form id="addSplitForm" action="{{ url_for('add_split') }}" method="POST">
+            <label for="splitType">Select Type:</label>
+            <select id="splitType" name="splitType" required>
+                <option value="subgroup">Subgroup</option>
+                <option value="event">Event</option>
+            </select>
+            <br><br>
+            <label for="groupSelection">Select Group:</label>
+            <div id="groupSelection">
+                <input type="radio" name="groupOption" value="existing" id="existingGroup" checked> Existing Group
+                <br>
+                <table id="existingGroupsTable">
+                    <tr>
+                        <th>Select</th>
+                        <th>Group Name</th>
+                    </tr>
+                    {% for group in flat_groups + non_flat_groups %}
+                    <tr>
+                        <td><input type="radio" name="selectedGroup" value="{{ group.group_id }}"></td>
+                        <td>{{ group.group_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                <br>
+                <input type="radio" name="groupOption" value="new" id="newGroup"> New Group
+                <br>
+                <div id="newGroupUsers" style="display:none;">
+                    <label for="newGroupName">New Group Name:</label>
+                    <input type="text" id="newGroupName" name="newGroupName">
+                    <br><br>
+                    <label>Select Users:</label>
+                    {% for user in flat_group_members %}
+                    <div>
+                        <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}"> {{ user.user_name }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <br><br>
+            <label for="billName">Bill Name:</label>
+            <input type="text" id="billName" name="billName" required>
+            <br><br>
+            <label for="billAmount">Bill Amount:</label>
+            <input type="number" id="billAmount" name="billAmount" step="0.01" required>
+            <br><br>
+            <button type="submit">Add Split</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Get modal elements
+    var modal = document.getElementById("addSplitModal");
+    var btn = document.getElementById("addSplitBtn");
+    var span = document.getElementsByClassName("close")[0];
+    var existingGroupRadio = document.getElementById("existingGroup");
+    var newGroupRadio = document.getElementById("newGroup");
+    var newGroupUsersDiv = document.getElementById("newGroupUsers");
+
+    // When the user clicks the button, open the modal
+    btn.onclick = function() {
+        modal.style.display = "block";
+    }
+
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Show/Hide new group users selection based on radio button
+    existingGroupRadio.onclick = function() {
+        newGroupUsersDiv.style.display = "none";
+    }
+
+    newGroupRadio.onclick = function() {
+        newGroupUsersDiv.style.display = "block";
+    }
+</script>
+
 </body>
+</html>
