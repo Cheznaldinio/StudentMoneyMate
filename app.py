@@ -1,6 +1,6 @@
 import random
 import string
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response
 import logging
 import os
 from databases import db, Users, Groups, Accounts, Ledger, Bills, Config, GroupMembers
@@ -40,6 +40,14 @@ def index():
     else:
         for user in all_users:
             logging.info(user)
+
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+
+    remember_me = request.cookies.get('rememberMe')
+    if remember_me and remember_me == 'true' and 'user_id' in session:
+        return redirect(url_for('home'))
+
     return render_template('login.html')
 
 @app.route('/login', methods=['POST'])
@@ -48,6 +56,8 @@ def login():
         try:
             account_email = request.form['accountEmail']
             account_password = request.form['accountUserPassword']
+            remember_me = request.form.get('rememberMe')
+
             logging.info(account_email)
             logging.info(account_password)
 
@@ -55,7 +65,13 @@ def login():
             if user and user.password == account_password:
                 logging.info("Logged in")
                 session['user_id'] = user.user_id
-                return redirect(url_for('home'))
+
+                resp = make_response(redirect(url_for('home')))
+                if remember_me:
+                    resp.set_cookie('rememberMe', 'true', max_age=30*24*60*60)
+                else:
+                    resp.set_cookie('rememberMe', 'false', max_age=30*24*60*60)
+                return resp
 
             error_message = {"error": "Invalid email or password"}
             return jsonify(error_message), 401
@@ -187,7 +203,6 @@ def home():
                            group_message=None, flat_bills=flat_bills_data, total_flat_owed=total_flat_owed,
                            non_flat_bills=non_flat_bills_data, total_non_flat_owed=total_non_flat_owed,
                            individual_owed=individual_owed, manager_name=manager_name)
-
 
 @app.route('/add_split', methods=['POST'])
 def add_split():
@@ -335,8 +350,9 @@ def create_flat():
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
-    return redirect(url_for('index'))
-
+    resp = make_response(redirect(url_for('index')))
+    resp.set_cookie('rememberMe', 'false', expires=0)
+    return resp
 
 if __name__ == '__main__':
     app.run(debug=True)

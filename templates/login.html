@@ -78,7 +78,7 @@
         }
         .form-group {
             position: relative;
-            margin: 10px 0;
+            margin: 8px 0;
         }
         input[type="email"], input[type="password"] {
             width: 100%;
@@ -144,7 +144,30 @@
         .create-account a:hover {
             text-decoration: underline;
         }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .remember-me input[type="checkbox"] {
+            margin-right: 5px;
+            position: relative;
+            top: 2px;
+        }
     </style>
+    <script>
+        function setRememberMe() {
+            const rememberMe = document.getElementById('rememberMe').checked;
+            document.cookie = "rememberMe=" + rememberMe + "; max-age=" + (30 * 24 * 60 * 60) + "; path=/";
+        }
+
+        window.onload = function() {
+            const rememberMe = document.cookie.split('; ').find(row => row.startsWith('rememberMe')).split('=')[1];
+            if (rememberMe === 'true') {
+                document.getElementById('rememberMe').checked = true;
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -158,7 +181,7 @@
                     <p class="medium-font">Ready to save?</p>
                     <p class="bold-font">Continue your journey:</p>
                 </div>
-                <form action="/login" method="POST">
+                <form action="/login" method="POST" onsubmit="setRememberMe()">
                     <div class="form-group">
                         <input type="email" name="accountEmail" placeholder="example@email.com" required>
                         <label for="accountEmail">Email</label>
@@ -166,6 +189,10 @@
                     <div class="form-group">
                         <input type="password" name="accountUserPassword" placeholder="password123" required>
                         <label for="accountUserPassword">Password</label>
+                    </div>
+                    <div class="form-group remember-me">
+                        <input type="checkbox" id="rememberMe" name="rememberMe">
+                        <span>Remember Me</span>
                     </div>
                     <input type="submit" value="Login">
                 </form>
