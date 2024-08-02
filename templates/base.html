@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Student Money Mate{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo2.png') }}">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -190,7 +191,9 @@
                 <a href="/home" target="_top">Flat</a>
                 <a href="/individual" target="_top">Individual</a>
                 <div class="profile-container">
-                    <button class="profile-button"></button>
+                    <a href="/account" target="_top">
+                        <button class="profile-button"></button>
+                    </a>
                     <div class="dropdown-content">
                         <a href="/account" target="_top">Account</a>
                         <a href="/logout" target="_top">Log Out</a>

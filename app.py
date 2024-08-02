@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 import logging
 import os
 from databases import db, Users, Groups, Accounts, Ledger, Bills, Config, GroupMembers
+from uuid import uuid4
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -335,7 +336,6 @@ def create_flat():
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('index'))
-
 
 
 if __name__ == '__main__':
