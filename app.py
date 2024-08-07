@@ -5,6 +5,9 @@ import logging
 import os
 from databases import db, Users, Groups, Accounts, Ledger, Bills, Config, GroupMembers
 from uuid import uuid4
+import datetime
+from datetime import datetime, timedelta
+import calendar
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -149,6 +152,7 @@ def home():
 
         for group in flat_groups:
             bills = Bills.query.filter_by(group_id=group.group_id).all()
+            group.bills = bills  # Attach bills to the group for template use
             for bill in bills:
                 logging.info(f"Bill: {bill}")
                 num_members = GroupMembers.query.filter_by(group_id=group.group_id).count()
@@ -170,6 +174,7 @@ def home():
 
     for group in non_flat_groups:
         bills = Bills.query.filter_by(group_id=group.group_id).all()
+        group.bills = bills  # Attach bills to the group for template use
         group_manager = Users.query.get(group.manager_id)
         group_manager_name = group_manager.user_name.replace('_', ' ').title() if group_manager else "N/A"
         group_members = GroupMembers.query.filter_by(group_id=group.group_id).all()
@@ -198,11 +203,26 @@ def home():
                                     .filter(GroupMembers.group_id.in_([group.group_id for group in flat_groups])).all()
     logging.info(f"Flat Group Members: {flat_group_members}")
 
-    return render_template('home.html', user=user, flat_groups=flat_groups, non_flat_groups=non_flat_groups, flat_group_members=flat_group_members,
+    other_flat_members = [member for member in flat_group_members if member.user_id != user_id]
+
+    # Get groups where the user is the manager
+    managed_flat_groups = Groups.query.filter_by(manager_id=user_id, group_type='flat').all()
+    managed_non_flat_groups = Groups.query.filter(
+        Groups.manager_id == user_id, Groups.group_type != 'flat'
+    ).all()
+
+    return render_template('home.html', user=user, flat_groups=flat_groups, non_flat_groups=non_flat_groups,
+                           flat_group_members=flat_group_members, other_flat_members=other_flat_members,
                            flat_group_names=flat_group_names, non_flat_group_names=non_flat_group_names,
                            group_message=None, flat_bills=flat_bills_data, total_flat_owed=total_flat_owed,
                            non_flat_bills=non_flat_bills_data, total_non_flat_owed=total_non_flat_owed,
-                           individual_owed=individual_owed, manager_name=manager_name)
+                           individual_owed=individual_owed, manager_name=manager_name,
+                           managed_flat_groups=managed_flat_groups, managed_non_flat_groups=managed_non_flat_groups)
+
+
+
+from datetime import datetime, timedelta
+import calendar
 
 @app.route('/add_split', methods=['POST'])
 def add_split():
@@ -214,6 +234,11 @@ def add_split():
     group_option = request.form.get('groupOption')
     bill_name = request.form.get('billName')
     bill_amount = float(request.form.get('billAmount'))
+    start_date_str = request.form.get('startDate')
+    reoccurring = request.form.get('reoccurring') == 'on'
+    frequency = request.form.get('frequency')
+    reoccurrences = int(request.form.get('reoccurrences', 0))
+    custom_days_str = request.form.get('customDays', '0')
 
     if split_type not in ['subgroup', 'event']:
         return jsonify({"error": "Invalid split type"}), 400
@@ -226,6 +251,8 @@ def add_split():
                 return jsonify({"error": "Group not found"}), 404
         else:
             new_group_name = request.form.get('newGroupName')
+            if new_group_name == '':
+                return jsonify({"error": "Group name cannot be empty"}), 400
             selected_users = request.form.getlist('selectedUsers')
             new_group_id = generate_hex_id('group')
             group = Groups(group_id=new_group_id, group_name=new_group_name, manager_id=user_id, group_type=split_type)
@@ -237,8 +264,43 @@ def add_split():
                 db.session.add(group_member)
             db.session.commit()
 
-        bill = Bills(bill_id=str(uuid4()), bill_name=bill_name, group_id=group.group_id, amount=bill_amount)
+        # Convert start_date_str to a datetime object
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        else:
+            start_date = datetime.now() + timedelta(days=30)
+
+        # Ensure custom_days is an integer
+        try:
+            custom_days = int(custom_days_str)
+        except ValueError:
+            custom_days = 0
+
+        # Add the initial bill
+        bill_id = generate_hex_id('bill')
+        bill = Bills(bill_id=bill_id, bill_name=bill_name, group_id=group.group_id, amount=bill_amount, start_date=start_date)
         db.session.add(bill)
+
+        # Handle recurring bills
+        if reoccurring:
+            for i in range(1, reoccurrences):
+                if frequency == 'weekly':
+                    next_date = start_date + timedelta(weeks=i)
+                elif frequency == 'monthly':
+                    month = start_date.month - 1 + i
+                    year = start_date.year + month // 12
+                    month = month % 12 + 1
+                    day = min(start_date.day, calendar.monthrange(year, month)[1])
+                    next_date = datetime(year=year, month=month, day=day)
+                elif frequency == 'custom':
+                    next_date = start_date + timedelta(days=custom_days * i)
+                else:
+                    continue
+
+                bill_id = generate_hex_id('bill')
+                bill = Bills(bill_id=bill_id, bill_name=bill_name, group_id=group.group_id, amount=bill_amount, start_date=next_date)
+                db.session.add(bill)
+
         db.session.commit()
 
         return redirect(url_for('home'))

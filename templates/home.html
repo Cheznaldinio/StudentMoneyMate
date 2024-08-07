@@ -3,103 +3,106 @@
 {% block title %}Student Money Mate{% endblock %}
 
 {% block content %}
-        {% if not flat_groups %}
-        <div class="buttons">
-            <button id="createFlatBtn">Create Flat Group</button>
-            <form action="{{ url_for('join_flat') }}" method="POST" style="display: inline;">
-                <input type="text" name="flatGroupId" placeholder="Enter Flat Group ID" required>
-                <button type="submit">Join Flat</button>
-            </form>
-        </div>
-        {% else %}
-        <div class="group-info">
-            {% if group_message %}
-                <p>{{ group_message }}</p>
-            {% else %}
-                <p><strong>Flat Group:</strong> {{ flat_group_names | join(', ') }}</p>
-                <p><strong>Manager:</strong> {{ manager_name }}</p>
-                <p><strong>Non-flat Groups:</strong> {{ non_flat_group_names | join(', ') }}</p>
-            {% endif %}
-        </div>
-        <h2>Flat Bills</h2>
-        <div class="bills">
-            {% if flat_bills %}
-            <table>
-                <tr>
-                    <th>Bills</th>
-                    <th>Total Cost (monthly)</th>
-                    <th>Personal Cost</th>
-                    <th>Paid</th>
-                    <th>Due Date</th>
-                </tr>
-                {% for bill in flat_bills %}
-                <tr>
-                    <td>{{ bill.bill_name }}</td>
-                    <td>£{{ bill.amount }}</td>
-                    <td>£{{ '%.2f' % bill.personal_cost }}</td>
-                    <td>{{ bill.paid }}</td>
-                    <td>{{ bill.due_date.strftime('%d/%m/%Y') }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% else %}
-            <p>No flat bills available.</p>
-            {% endif %}
-        </div>
-        <div class="owed-info">
-            <p><strong>Owed:</strong> £{{ '%.2f' % total_flat_owed }} to {{ manager_name }}</p>
-        </div>
-        <h2>Non-flat Bills</h2>
-        <div class="bills">
-            {% if non_flat_bills %}
-            <table>
-                <tr>
-                    <th>Bills</th>
-                    <th>Group Members</th>
-                    <th>Group Manager</th>
-                    <th>Total Cost</th>
-                    <th>Your Share</th>
-                    <th>Paid</th>
-                </tr>
-                {% for bill in non_flat_bills %}
-                <tr>
-                    <td>{{ bill.bill_name }}</td>
-                    <td>{{ bill.group_members }}</td>
-                    <td>{{ bill.group_manager }}</td>
-                    <td>£{{ bill.amount }}</td>
-                    <td>£{{ '%.2f' % bill.personal_cost }}</td>
-                    <td>{{ bill.paid }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% else %}
-            <p>No non-flat bills available.</p>
-            {% endif %}
-        </div>
-        <div class="owed-info">
-            <h3>Individual Amounts Owed</h3>
-            <table>
-                <tr>
-                    <th>Manager</th>
-                    <th>Amount Owed</th>
-                </tr>
-                {% for manager, amount in individual_owed.items() %}
-                <tr>
-                    <td>{{ manager }}</td>
-                    <td>£{{ '%.2f' % amount }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-        <div class="owed-info">
-            <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
-        </div>
-        <div class="buttons">
-            <button id="addSplitBtn">Add a Split</button>
-            <button>I have paid Someone</button>
-        </div>
-        {% endif %}
-    </div>
+{% if not flat_groups %}
+<div class="buttons">
+    <button id="createFlatBtn">Create Flat Group</button>
+    <form action="{{ url_for('join_flat') }}" method="POST" style="display: inline;">
+        <input type="text" name="flatGroupId" placeholder="Enter Flat Group ID" required>
+        <button type="submit">Join Flat</button>
+    </form>
+</div>
+{% else %}
+<div class="group-info">
+    {% if group_message %}
+    <p>{{ group_message }}</p>
+    {% else %}
+    <p><strong>Flat Group:</strong> {{ flat_group_names | join(', ') }}</p>
+    {% for group in flat_groups %}
+    <p><strong>FLAT CODE:</strong> {{ group.group_id }}</p>
+    {% endfor %}
+    <p><strong>Manager:</strong> {{ manager_name }}</p>
+    <p><strong>Non-flat Groups:</strong> {{ non_flat_group_names | join(', ') }}</p>
+    {% endif %}
+</div>
+<h2>Flat Bills</h2>
+<div class="bills">
+    {% if flat_bills %}
+    <table>
+    <tr>
+        <th>Bills</th>
+        <th>Total Cost (monthly)</th>
+        <th>Personal Cost</th>
+        <th>Paid</th>
+        <th>Due Date</th>
+    </tr>
+    {% for bill in flat_bills %}
+    <tr>
+        <td>{{ bill.bill_name }}</td>
+        <td>£{{ bill.amount }}</td>
+        <td>£{{ '%.2f' % bill.personal_cost }}</td>
+        <td>{{ bill.paid }}</td>
+        <td>{% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </table>
+    {% else %}
+    <p>No flat bills available.</p>
+    {% endif %}
+</div>
+<div class="owed-info">
+    <p><strong>Owed:</strong> £{{ '%.2f' % total_flat_owed }} to {{ manager_name }}</p>
+</div>
+<h2>Non-flat Bills</h2>
+<div class="bills">
+    {% if non_flat_bills %}
+    <table>
+        <tr>
+            <th>Bills</th>
+            <th>Group Members</th>
+            <th>Group Manager</th>
+            <th>Total Cost</th>
+            <th>Your Share</th>
+            <th>Paid</th>
+        </tr>
+        {% for bill in non_flat_bills %}
+        <tr>
+            <td>{{ bill.bill_name }}</td>
+            <td>{{ bill.group_members }}</td>
+            <td>{{ bill.group_manager }}</td>
+            <td>£{{ bill.amount }}</td>
+            <td>£{{ '%.2f' % bill.personal_cost }}</td>
+            <td>{{ bill.paid }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No non-flat bills available.</p>
+    {% endif %}
+</div>
+<div class="owed-info">
+    <h3>Individual Amounts Owed</h3>
+    <table>
+        <tr>
+            <th>Manager</th>
+            <th>Amount Owed</th>
+        </tr>
+        {% for manager, amount in individual_owed.items() %}
+        <tr>
+            <td>{{ manager }}</td>
+            <td>£{{ '%.2f' % amount }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+<div class="owed-info">
+    <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
+</div>
+<div class="buttons">
+    <button id="addSplitBtn">Add a Split</button>
+    <button>I have paid Someone</button>
+</div>
+{% endif %}
+</div>
 
 <!-- Modal for Creating a Flat Group -->
 <div id="createFlatModal" class="modal">
@@ -119,12 +122,6 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <form id="addSplitForm" action="{{ url_for('add_split') }}" method="POST">
-            <label for="splitType">Select Type:</label>
-            <select id="splitType" name="splitType" required>
-                <option value="subgroup">Subgroup</option>
-                <option value="event">Event</option>
-            </select>
-            <br><br>
             <label for="groupSelection">Select Group:</label>
             <div id="groupSelection">
                 <input type="radio" name="groupOption" value="existing" id="existingGroup" checked> Existing Group
@@ -133,11 +130,21 @@
                     <tr>
                         <th>Select</th>
                         <th>Group Name</th>
+                        <th>Group Type</th>
+                        <th>Existing Bills</th>
                     </tr>
-                    {% for group in flat_groups + non_flat_groups %}
+                    {% for group in managed_flat_groups + managed_non_flat_groups if group.group_type != 'event' %}
                     <tr>
                         <td><input type="radio" name="selectedGroup" value="{{ group.group_id }}"></td>
                         <td>{{ group.group_name }}</td>
+                        <td>{{ group.group_type }}</td>
+                        <td>
+                            <ul>
+                                {% for bill in group.bills %}
+                                <li>{{ bill.bill_name }} (£{{ bill.amount }})</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
                     </tr>
                     {% endfor %}
                 </table>
@@ -145,14 +152,30 @@
                 <input type="radio" name="groupOption" value="new" id="newGroup"> New Group
                 <br>
                 <div id="newGroupUsers" style="display:none;">
+                    <label for="splitType">Select Type:</label>
+                    <select id="splitType" name="splitType" required>
+                        <option value="subgroup">Subgroup</option>
+                        <option value="event">Event</option>
+                    </select>
+                    <span class="tooltip">
+                        <i> i </i>
+                        <span class="tooltiptext"><b>Subgroup:</b> For a frequently shared expense<br><b>Event:</b> For one-off splits.</span>
+                    </span>
+                    <br><br>
                     <label for="newGroupName">New Group Name:</label>
                     <input type="text" id="newGroupName" name="newGroupName">
                     <br><br>
                     <label>Select Users:</label>
-                    {% for user in flat_group_members %}
                     <div>
-                        <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}"> {{ user.user_name }}
+                        <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}" id="alwaysSelectedCheckbox" checked>
+                        {{ user.user_name }}
                     </div>
+                    {% for member in flat_group_members %}
+                    {% if member.user_id != user.user_id %}
+                    <div>
+                        <input type="checkbox" name="selectedUsers" value="{{ member.user_id }}"> {{ member.user_name }}
+                    </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>
@@ -163,10 +186,62 @@
             <label for="billAmount">Bill Amount:</label>
             <input type="number" id="billAmount" name="billAmount" step="0.01" required>
             <br><br>
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" name="startDate" required>
+            <br><br>
+            <div id="reoccurringOption">
+                <input type="checkbox" id="reoccurring" name="reoccurring">
+                <label for="reoccurring">Re-occurring</label>
+                <br><br>
+                <div id="reoccurringDetails" style="display: none;">
+                    <label for="frequency">Frequency:</label>
+                    <select id="frequency" name="frequency">
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <br><br>
+                    <label for="reoccurrences">Re-occurrences:</label>
+                    <input type="number" id="reoccurrences" name="reoccurrences">
+                    <br><br>
+                    <div id="customFrequency" style="display: none;">
+                        <label for="customDays">Days:</label>
+                        <input type="number" id="customDays" name="customDays">
+                    </div>
+                </div>
+            </div>
+            <br><br>
             <button type="submit">Add Split</button>
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var reoccurringCheckbox = document.getElementById("reoccurring");
+        var reoccurringDetails = document.getElementById("reoccurringDetails");
+        var customFrequency = document.getElementById("customFrequency");
+        var frequencySelect = document.getElementById("frequency");
+
+        reoccurringCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                reoccurringDetails.style.display = 'block';
+            } else {
+                reoccurringDetails.style.display = 'none';
+                customFrequency.style.display = 'none';
+            }
+        });
+
+        frequencySelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customFrequency.style.display = 'block';
+            } else {
+                customFrequency.style.display = 'none';
+            }
+        });
+    });
+</script>
+
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -182,6 +257,14 @@
         var existingGroupRadio = document.getElementById("existingGroup");
         var newGroupRadio = document.getElementById("newGroup");
         var newGroupUsersDiv = document.getElementById("newGroupUsers");
+        var existingGroupsTable = document.getElementById("existingGroupsTable");
+        var newGroupNameInput = document.getElementById("newGroupName");
+        var splitTypeSelect = document.getElementById("splitType");
+        var reoccurringOption = document.getElementById("reoccurringOption");
+        var reoccurringCheckbox = document.getElementById("reoccurring");
+        var reoccurringDetails = document.getElementById("reoccurringDetails");
+        var customFrequency = document.getElementById("customFrequency");
+        var frequencySelect = document.getElementById("frequency");
 
         // Ensure elements are selected correctly
         console.log(createFlatBtn, createFlatModal, createFlatSpan, addSplitBtn);
@@ -227,17 +310,121 @@
         if (existingGroupRadio) {
             existingGroupRadio.onclick = function() {
                 newGroupUsersDiv.style.display = "none";
+                existingGroupsTable.style.display = "block";
+                newGroupNameInput.removeAttribute('required');
+                splitTypeSelect.removeAttribute('required');
+                splitTypeSelect.style.display = 'none'; // Hide split type select
+                reoccurringOption.style.display = 'none'; // Hide re-occurring option
             }
         }
 
         if (newGroupRadio) {
             newGroupRadio.onclick = function() {
                 newGroupUsersDiv.style.display = "block";
+                existingGroupsTable.style.display = "none";
+                newGroupNameInput.setAttribute('required', 'required');
+                splitTypeSelect.setAttribute('required', 'required');
+                splitTypeSelect.style.display = 'inline'; // Show split type select
+                reoccurringOption.style.display = 'none'; // Hide re-occurring option
             }
         }
+
+        // Ensure the new group name is required if displayed
+        document.getElementById("addSplitForm").onsubmit = function() {
+            if (newGroupUsersDiv.style.display !== "none") {
+                newGroupNameInput.setAttribute('required', 'required');
+                splitTypeSelect.setAttribute('required', 'required');
+            } else {
+                newGroupNameInput.removeAttribute('required');
+                splitTypeSelect.removeAttribute('required');
+            }
+        }
+
+        // Ensure the current user's checkbox is always selected
+        const alwaysSelectedCheckbox = document.getElementById('alwaysSelectedCheckbox');
+        alwaysSelectedCheckbox.addEventListener('change', function() {
+            if (!this.checked) {
+                this.checked = true;
+            }
+        });
+
+        // Show reoccurring option if flat group is selected
+        document.querySelectorAll('input[name="selectedGroup"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                const groupType = this.closest('tr').querySelector('td:nth-child(3)').innerText.trim();
+                if (groupType === 'flat') {
+                    reoccurringOption.style.display = 'block';
+                } else {
+                    reoccurringOption.style.display = 'none';
+                    reoccurringCheckbox.checked = false;
+                    reoccurringDetails.style.display = 'none';
+                    customFrequency.style.display = 'none';
+                }
+            });
+        });
+
+        // Show reoccurring details if reoccurring checkbox is checked
+        reoccurringCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                reoccurringDetails.style.display = 'block';
+            } else {
+                reoccurringDetails.style.display = 'none';
+                customFrequency.style.display = 'none';
+            }
+        });
+
+        // Show custom days input if custom frequency is selected
+        frequencySelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customFrequency.style.display = 'block';
+            } else {
+                customFrequency.style.display = 'none';
+            }
+        });
     });
 </script>
 
-</body>
-</html>
+<style>
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+        color: blue;
+    }
+
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 220px;
+        background-color: black;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%; /* Position the tooltip above the text */
+        left: 50%;
+        margin-left: -110px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .tooltip i {
+        border: 1px solid #4c4cc4;
+        border-radius: 50%;
+        padding: 5px;  /* Adjust this value as needed to control the size */
+        font-style: normal;
+        display: inline-block;
+        width: 15px;  /* Ensure width and height are equal */
+        height: 15px; /* Ensure width and height are equal */
+        text-align: center;  /* Center the 'i' character */
+        line-height: 20px;   /* Vertically center the 'i' character */
+    }
+</style>
+
 {% endblock %}

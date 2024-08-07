@@ -8,7 +8,7 @@
     </div>
     <div id="view-section">
         <div class="profile-section">
-            <img src="{{ url_for('static', filename='profile.png') }}" alt="Profile Image">
+            <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Profile Image">
         </div>
         <div class="details-section">
             <h3>Personal Details</h3>
@@ -31,14 +31,15 @@
             <button type="button">Add Bank Details</button>
         </div>
     </div>
-    <form method="POST" action="{{ url_for('update_account') }}">
+    <form method="POST" action="{{ url_for('update_account') }}" enctype="multipart/form-data">
         <div id="edit-section" class="edit-section">
             <div class="details-section">
                 <h3>Personal Details</h3>
                 <p><span>Name:</span> <input type="text" name="name" value="{{ user.user_name }}"></p>
                 <p><span>Email:</span> <input type="email" name="email" value="{{ user.email }}"></p>
                 <p><span>New Password:</span> <input type="password" name="new_password" placeholder="Leave blank to keep current password"></p>
-                <p><span>Previous Password:</span> <input type="password" name="previous_password" required></p>
+                <p><span>Current Password:</span> <input type="password" name="previous_password" required></p>
+                <p><span>Upload Profile Picture:</span> <input type="file" name="profile_picture"></p>
                 <p><span>Email Notifications?</span></p>
                 <p>ON <input type="radio" name="notifications" checked> OFF <input type="radio" name="notifications"></p>
             </div>

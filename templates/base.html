@@ -132,7 +132,7 @@
             display: inline-block;
         }
         .profile-button {
-            background: url('{{ url_for('static', filename='profile.png') }}') no-repeat center center;
+            background: url('{{ url_for('static', filename=user.profile_picture if 'user' in session else 'profile.png') }}') no-repeat center center;
             background-size: cover;
             width: 40px;
             height: 40px;
