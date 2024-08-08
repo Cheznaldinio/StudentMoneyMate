@@ -1,7 +1,7 @@
 import os
-from sqlalchemy import text, ForeignKey
+from sqlalchemy import text, ForeignKey, Float
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.types import String, Boolean, Float, Integer, TIMESTAMP
+from sqlalchemy.types import String, Boolean, TIMESTAMP, Integer
 
 db = SQLAlchemy()
 
@@ -9,7 +9,7 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
                               'postgresql://postgres:postgres@localhost/StudentMoneyMate'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    #SQLALCHEMY_ECHO = True
+
 class Users(db.Model):
     user_id = db.Column(String(255), primary_key=True, nullable=True, server_default=text('NULL::character varying'))
     user_name = db.Column(String(255), nullable=False)
@@ -29,31 +29,14 @@ class Groups(db.Model):
     def __str__(self):
         return f"Group: {self.group_id}, {self.group_name}, {self.manager_id}, {self.group_type}"
 
-class Accounts(db.Model):
-    account_id = db.Column(String(255), primary_key=True)
-    account_type = db.Column(String(255))
-    entity_id = db.Column(String(255))
-
-    def __str__(self):
-        return f"Account: {self.account_id}, {self.account_type}, {self.entity_id}"
-
 class Ledger(db.Model):
-    transaction_id = db.Column(String(255), primary_key=True)
-    group_id = db.Column(String(255), ForeignKey('groups.group_id'))
-    account_id = db.Column(String(255), ForeignKey('accounts.account_id'))
-    counterparty_id = db.Column(String(255), ForeignKey('accounts.account_id'))
+    payment_id = db.Column(String(255), primary_key=True)
     bill_id = db.Column(String(255), ForeignKey('bills.bill_id'))
-    amount = db.Column(Float)
-    type = db.Column(String(255))
-    due_date = db.Column(TIMESTAMP)
-    transaction_date = db.Column(TIMESTAMP)
+    user_id = db.Column(String(255), ForeignKey('users.user_id'))
     confirmed = db.Column(Boolean)
-    description = db.Column(String(255))
 
     def __str__(self):
-        return (f"Ledger: {self.transaction_id}, {self.group_id}, {self.account_id}, {self.counterparty_id}, "
-                f"{self.bill_id}, {self.amount}, {self.type}, {self.due_date}, {self.transaction_date}, "
-                f"{self.confirmed}, {self.description}")
+        return f"Ledger: {self.payment_id}, {self.bill_id}, {self.user_id}, {self.confirmed}"
 
 class Bills(db.Model):
     bill_id = db.Column(String(255), primary_key=True)
@@ -75,3 +58,13 @@ class GroupMembers(db.Model):
 
     def __str__(self):
         return f"GroupMembers: {self.group_id}, {self.user_id}"
+
+class Notifications(db.Model):
+    notif_id = db.Column(Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(String(255), ForeignKey('users.user_id'))
+    notif_type = db.Column(String(255))
+    content = db.Column(String(255))
+    read = db.Column(Boolean, default=False)
+
+    def __str__(self):
+        return f"Notification: {self.notif_id}, {self.user_id}, {self.notif_type}, {self.content}, {self.read}"

@@ -30,7 +30,7 @@
     <table>
     <tr>
         <th>Bills</th>
-        <th>Total Cost (monthly)</th>
+        <th>Total Cost</th>
         <th>Personal Cost</th>
         <th>Paid</th>
         <th>Due Date</th>
@@ -184,29 +184,31 @@
             <input type="text" id="billName" name="billName" required>
             <br><br>
             <label for="billAmount">Bill Amount:</label>
-            <input type="number" id="billAmount" name="billAmount" step="0.01" required>
+            <input type="number" id="billAmount" name="billAmount" step="0.5" required min="1.00" max="5000.00">
             <br><br>
-            <label for="startDate">Start Date:</label>
-            <input type="date" id="startDate" name="startDate" required>
-            <br><br>
-            <div id="reoccurringOption">
-                <input type="checkbox" id="reoccurring" name="reoccurring">
-                <label for="reoccurring">Re-occurring</label>
+            <div id="flatOnlyFields" style="display: none;">
+                <label for="startDate">Start Date:</label>
+                <input type="date" id="startDate" name="startDate">
                 <br><br>
-                <div id="reoccurringDetails" style="display: none;">
-                    <label for="frequency">Frequency:</label>
-                    <select id="frequency" name="frequency">
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="custom">Custom</option>
-                    </select>
+                <div id="reoccurringOption">
+                    <input type="checkbox" id="reoccurring" name="reoccurring">
+                    <label for="reoccurring">Re-occurring</label>
                     <br><br>
-                    <label for="reoccurrences">Re-occurrences:</label>
-                    <input type="number" id="reoccurrences" name="reoccurrences">
-                    <br><br>
-                    <div id="customFrequency" style="display: none;">
-                        <label for="customDays">Days:</label>
-                        <input type="number" id="customDays" name="customDays">
+                    <div id="reoccurringDetails" style="display: none;">
+                        <label for="frequency">Frequency:</label>
+                        <select id="frequency" name="frequency">
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <br><br>
+                        <label for="reoccurrences">Re-occurrences:</label>
+                        <input type="number" id="reoccurrences" name="reoccurrences" min="1" max="20">
+                        <br><br>
+                        <div id="customFrequency" style="display: none;">
+                            <label for="customDays">Days:</label>
+                            <input type="number" id="customDays" name="customDays" min="2" max="30">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -240,10 +242,7 @@
             }
         });
     });
-</script>
 
-
-<script>
     document.addEventListener("DOMContentLoaded", function() {
         // Get modal elements
         var addSplitModal = document.getElementById("addSplitModal");
@@ -260,11 +259,7 @@
         var existingGroupsTable = document.getElementById("existingGroupsTable");
         var newGroupNameInput = document.getElementById("newGroupName");
         var splitTypeSelect = document.getElementById("splitType");
-        var reoccurringOption = document.getElementById("reoccurringOption");
-        var reoccurringCheckbox = document.getElementById("reoccurring");
-        var reoccurringDetails = document.getElementById("reoccurringDetails");
-        var customFrequency = document.getElementById("customFrequency");
-        var frequencySelect = document.getElementById("frequency");
+        var flatOnlyFields = document.getElementById("flatOnlyFields");
 
         // Ensure elements are selected correctly
         console.log(createFlatBtn, createFlatModal, createFlatSpan, addSplitBtn);
@@ -314,7 +309,7 @@
                 newGroupNameInput.removeAttribute('required');
                 splitTypeSelect.removeAttribute('required');
                 splitTypeSelect.style.display = 'none'; // Hide split type select
-                reoccurringOption.style.display = 'none'; // Hide re-occurring option
+                flatOnlyFields.style.display = 'none'; // Hide flat-only fields
             }
         }
 
@@ -325,7 +320,7 @@
                 newGroupNameInput.setAttribute('required', 'required');
                 splitTypeSelect.setAttribute('required', 'required');
                 splitTypeSelect.style.display = 'inline'; // Show split type select
-                reoccurringOption.style.display = 'none'; // Hide re-occurring option
+                flatOnlyFields.style.display = 'none'; // Hide flat-only fields
             }
         }
 
@@ -348,38 +343,19 @@
             }
         });
 
-        // Show reoccurring option if flat group is selected
+        // Show flat-only fields if a flat group is selected
         document.querySelectorAll('input[name="selectedGroup"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 const groupType = this.closest('tr').querySelector('td:nth-child(3)').innerText.trim();
                 if (groupType === 'flat') {
-                    reoccurringOption.style.display = 'block';
+                    flatOnlyFields.style.display = 'block';
                 } else {
-                    reoccurringOption.style.display = 'none';
+                    flatOnlyFields.style.display = 'none';
                     reoccurringCheckbox.checked = false;
                     reoccurringDetails.style.display = 'none';
                     customFrequency.style.display = 'none';
                 }
             });
-        });
-
-        // Show reoccurring details if reoccurring checkbox is checked
-        reoccurringCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                reoccurringDetails.style.display = 'block';
-            } else {
-                reoccurringDetails.style.display = 'none';
-                customFrequency.style.display = 'none';
-            }
-        });
-
-        // Show custom days input if custom frequency is selected
-        frequencySelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                customFrequency.style.display = 'block';
-            } else {
-                customFrequency.style.display = 'none';
-            }
         });
     });
 </script>

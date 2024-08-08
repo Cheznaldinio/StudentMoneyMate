@@ -3,11 +3,12 @@ import string
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response
 import logging
 import os
-from databases import db, Users, Groups, Accounts, Ledger, Bills, Config, GroupMembers
+from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers
 from uuid import uuid4
 import datetime
 from datetime import datetime, timedelta
 import calendar
+from collections import defaultdict
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -131,12 +132,12 @@ def home():
     user = Users.query.get(user_id)
     logging.info(f"User: {user}")
 
-    flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id)\
-                              .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
+    flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+        .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
     logging.info(f"Flat Groups: {flat_groups}")
 
-    non_flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id)\
-                                  .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
+    non_flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+        .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
     logging.info(f"Non-flat Groups: {non_flat_groups}")
 
     manager_name = "N/A"
@@ -150,22 +151,37 @@ def home():
 
         flat_group_names = [group.group_name for group in flat_groups]
 
+        # Group bills by name, amount, and group
+        grouped_bills = defaultdict(list)
         for group in flat_groups:
             bills = Bills.query.filter_by(group_id=group.group_id).all()
             group.bills = bills  # Attach bills to the group for template use
             for bill in bills:
-                logging.info(f"Bill: {bill}")
-                num_members = GroupMembers.query.filter_by(group_id=group.group_id).count()
-                personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
-                total_flat_owed += personal_cost
-                flat_bills_data.append({
-                    'bill_name': bill.bill_name,
-                    'amount': bill.amount,
-                    'due_date': bill.start_date,
-                    'group_id': bill.group_id,
-                    'personal_cost': personal_cost,
-                    'paid': "No"
-                })
+                grouped_bills[(bill.bill_name, bill.amount, bill.group_id)].append(bill)
+
+        # Process each group of bills to include only the next upcoming and past bills
+        for (bill_name, amount, group_id), bills in grouped_bills.items():
+            bills.sort(key=lambda x: x.start_date)
+            next_bill = None
+            current_date = datetime.now()
+            for bill in bills:
+                if bill.start_date and bill.start_date > current_date:
+                    next_bill = bill
+                    break
+
+            for bill in bills:
+                if next_bill is None or bill.start_date <= next_bill.start_date:
+                    num_members = GroupMembers.query.filter_by(group_id=bill.group_id).count()
+                    personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
+                    total_flat_owed += personal_cost
+                    flat_bills_data.append({
+                        'bill_name': bill.bill_name,
+                        'amount': bill.amount,
+                        'due_date': bill.start_date,
+                        'group_id': bill.group_id,
+                        'personal_cost': personal_cost,
+                        'paid': "No"
+                    })
 
     non_flat_group_names = [group.group_name for group in non_flat_groups]
     non_flat_bills_data = []
@@ -176,9 +192,11 @@ def home():
         bills = Bills.query.filter_by(group_id=group.group_id).all()
         group.bills = bills  # Attach bills to the group for template use
         group_manager = Users.query.get(group.manager_id)
-        group_manager_name = group_manager.user_name.replace('_', ' ').title() if group_manager else "N/A"
+        group_manager_name = group_manager.user_name.replace('_',
+                                                             ' ').title() if group_manager else "N/A"
         group_members = GroupMembers.query.filter_by(group_id=group.group_id).all()
-        member_names = [Users.query.get(member.user_id).user_name.replace('_', ' ').title() for member in group_members]
+        member_names = [Users.query.get(member.user_id).user_name.replace('_', ' ').title() for
+                        member in group_members]
 
         for bill in bills:
             logging.info(f"Bill: {bill}")
@@ -199,8 +217,8 @@ def home():
                 'paid': "No"
             })
 
-    flat_group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id)\
-                                    .filter(GroupMembers.group_id.in_([group.group_id for group in flat_groups])).all()
+    flat_group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id) \
+        .filter(GroupMembers.group_id.in_([group.group_id for group in flat_groups])).all()
     logging.info(f"Flat Group Members: {flat_group_members}")
 
     other_flat_members = [member for member in flat_group_members if member.user_id != user_id]
@@ -211,18 +229,19 @@ def home():
         Groups.manager_id == user_id, Groups.group_type != 'flat'
     ).all()
 
-    return render_template('home.html', user=user, flat_groups=flat_groups, non_flat_groups=non_flat_groups,
-                           flat_group_members=flat_group_members, other_flat_members=other_flat_members,
-                           flat_group_names=flat_group_names, non_flat_group_names=non_flat_group_names,
-                           group_message=None, flat_bills=flat_bills_data, total_flat_owed=total_flat_owed,
-                           non_flat_bills=non_flat_bills_data, total_non_flat_owed=total_non_flat_owed,
+    return render_template('home.html', user=user, flat_groups=flat_groups,
+                           non_flat_groups=non_flat_groups,
+                           flat_group_members=flat_group_members,
+                           other_flat_members=other_flat_members,
+                           flat_group_names=flat_group_names,
+                           non_flat_group_names=non_flat_group_names,
+                           group_message=None, flat_bills=flat_bills_data,
+                           total_flat_owed=total_flat_owed,
+                           non_flat_bills=non_flat_bills_data,
+                           total_non_flat_owed=total_non_flat_owed,
                            individual_owed=individual_owed, manager_name=manager_name,
-                           managed_flat_groups=managed_flat_groups, managed_non_flat_groups=managed_non_flat_groups)
-
-
-
-from datetime import datetime, timedelta
-import calendar
+                           managed_flat_groups=managed_flat_groups,
+                           managed_non_flat_groups=managed_non_flat_groups)
 
 @app.route('/add_split', methods=['POST'])
 def add_split():
@@ -233,15 +252,30 @@ def add_split():
     split_type = request.form.get('splitType')
     group_option = request.form.get('groupOption')
     bill_name = request.form.get('billName')
-    bill_amount = float(request.form.get('billAmount'))
-    start_date_str = request.form.get('startDate')
+    bill_amount_str = request.form.get('billAmount')
+    start_date_str = request.form.get('startDate', None)
     reoccurring = request.form.get('reoccurring') == 'on'
-    frequency = request.form.get('frequency')
-    reoccurrences = int(request.form.get('reoccurrences', 0))
+    frequency = request.form.get('frequency', None)
+    reoccurrences_str = request.form.get('reoccurrences', '0')
     custom_days_str = request.form.get('customDays', '0')
 
     if split_type not in ['subgroup', 'event']:
         return jsonify({"error": "Invalid split type"}), 400
+
+    try:
+        bill_amount = float(bill_amount_str)
+    except ValueError:
+        return jsonify({"error": "Invalid bill amount"}), 400
+
+    try:
+        reoccurrences = int(reoccurrences_str)
+    except ValueError:
+        reoccurrences = 0
+
+    try:
+        custom_days = int(custom_days_str)
+    except ValueError:
+        custom_days = 0
 
     try:
         if group_option == 'existing':
@@ -251,7 +285,7 @@ def add_split():
                 return jsonify({"error": "Group not found"}), 404
         else:
             new_group_name = request.form.get('newGroupName')
-            if new_group_name == '':
+            if not new_group_name:
                 return jsonify({"error": "Group name cannot be empty"}), 400
             selected_users = request.form.getlist('selectedUsers')
             new_group_id = generate_hex_id('group')
@@ -266,15 +300,12 @@ def add_split():
 
         # Convert start_date_str to a datetime object
         if start_date_str:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({"error": "Invalid start date format. Use YYYY-MM-DD."}), 400
         else:
-            start_date = datetime.now() + timedelta(days=30)
-
-        # Ensure custom_days is an integer
-        try:
-            custom_days = int(custom_days_str)
-        except ValueError:
-            custom_days = 0
+            start_date = None
 
         # Add the initial bill
         bill_id = generate_hex_id('bill')
@@ -283,7 +314,7 @@ def add_split():
 
         # Handle recurring bills
         if reoccurring:
-            for i in range(1, reoccurrences):
+            for i in range(1, reoccurrences + 1):
                 if frequency == 'weekly':
                     next_date = start_date + timedelta(weeks=i)
                 elif frequency == 'monthly':
