@@ -3,7 +3,7 @@ import string
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response
 import logging
 import os
-from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers
+from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications
 from uuid import uuid4
 import datetime
 from datetime import datetime, timedelta
@@ -446,6 +446,16 @@ def logout():
     resp = make_response(redirect(url_for('index')))
     resp.set_cookie('rememberMe', 'false', expires=0)
     return resp
+
+@app.route('/notifications', methods=['GET'])
+def notifications():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('index'))
+
+    user = Users.query.get(user_id)
+    notifications = Notifications.query.filter_by(user_id=user_id).all()
+    return render_template('notifications.html', user=user, notifications=notifications)
 
 if __name__ == '__main__':
     app.run(debug=True)

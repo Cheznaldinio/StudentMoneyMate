@@ -123,6 +123,11 @@
             text-decoration: none;
             color: #000;
             font-weight: bold;
+            display: flex;
+            align-items: center; /* Center icon and text vertically */
+        }
+        .header-container .header nav a img {
+            margin-right: 5px; /* Space between icon and text */
         }
         .header-container .header nav a:hover {
             text-decoration: underline;
@@ -188,6 +193,9 @@
         <div class="header">
             <h1>Student Money Mate &copy;</h1>
             <nav>
+                <a href="/notifications" target="_top">
+                    <img src="{{ url_for('static', filename='mail.svg') }}" alt="Mail Icon" width="40" height="40">
+                </a>
                 <a href="/home" target="_top">Flat</a>
                 <a href="/individual" target="_top">Individual</a>
                 <div class="profile-container">
