@@ -99,7 +99,7 @@
 </div>
 <div class="buttons">
     <button id="addSplitBtn">Add a Split</button>
-    <button>I have paid Someone</button>
+    <button id="paidBillBtn">I have paid Someone</button>
 </div>
 {% endif %}
 </div>
@@ -218,6 +218,24 @@
     </div>
 </div>
 
+<!-- Modal for Marking a Bill as Paid -->
+<div id="paidBillModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Select a Bill to Mark as Paid</h3>
+        <form id="paidBillForm">
+            <label for="paidBillSelect">Select Bill:</label>
+            <select id="paidBillSelect" name="selectedBill" required>
+                {% for bill in non_flat_bills %}
+                <option value="{{ bill.bill_id }}">{{ bill.bill_name }} - £{{ '%.2f' % bill.personal_cost }} (Due: {% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %})</option>
+                {% endfor %}
+            </select>
+            <br><br>
+            <button type="button" id="markAsPaidBtn">I have paid this</button>
+        </form>
+    </div>
+</div>
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         var reoccurringCheckbox = document.getElementById("reoccurring");
@@ -253,6 +271,10 @@
         var createFlatBtn = document.getElementById("createFlatBtn");
         var createFlatSpan = createFlatModal.getElementsByClassName("close")[0];
 
+        var paidBillModal = document.getElementById("paidBillModal");
+        var paidBillBtn = document.getElementById("paidBillBtn");
+        var paidBillSpan = paidBillModal.getElementsByClassName("close")[0];
+
         var existingGroupRadio = document.getElementById("existingGroup");
         var newGroupRadio = document.getElementById("newGroup");
         var newGroupUsersDiv = document.getElementById("newGroupUsers");
@@ -279,6 +301,13 @@
             }
         }
 
+        if (paidBillBtn) {
+            paidBillBtn.onclick = function() {
+                console.log("Paid Bill Button Clicked");
+                paidBillModal.style.display = "block";
+            }
+        }
+
         // When the user clicks on <span> (x), close the modal
         if (addSplitSpan) {
             addSplitSpan.onclick = function() {
@@ -292,12 +321,20 @@
             }
         }
 
+        if (paidBillSpan) {
+            paidBillSpan.onclick = function() {
+                paidBillModal.style.display = "none";
+            }
+        }
+
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
             if (event.target == addSplitModal) {
                 addSplitModal.style.display = "none";
             } else if (event.target == createFlatModal) {
                 createFlatModal.style.display = "none";
+            } else if (event.target == paidBillModal) {
+                paidBillModal.style.display = "none";
             }
         }
 
@@ -357,6 +394,47 @@
                 }
             });
         });
+
+        // When the "I have paid this" button is clicked
+        var markAsPaidBtn = document.getElementById("markAsPaidBtn");
+        if (markAsPaidBtn) {
+            markAsPaidBtn.onclick = function() {
+                console.log("Mark as Paid button clicked.");
+
+                var selectedBill = document.getElementById("paidBillSelect").value;
+                console.log("Selected Bill ID:", selectedBill);
+
+                // Send an AJAX request to the /paid_bill route
+                fetch('{{ url_for("paid_bill") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'selectedBill=' + encodeURIComponent(selectedBill)
+                })
+                .then(response => {
+                    console.log("Received response from server.");
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error("Error from server:", data.error);
+                        alert("Error: " + data.error);
+                    } else {
+                        console.log("Success from server:", data.success);
+                        alert("Notification sent successfully");
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error in fetch operation:", error);
+                });
+
+                // Close the modal
+                paidBillModal.style.display = "none";
+            }
+        } else {
+            console.error("Mark as Paid button not found.");
+        }
     });
 </script>
 

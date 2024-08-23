@@ -453,9 +453,56 @@ def notifications():
     if not user_id:
         return redirect(url_for('index'))
 
+    # Retrieve the user and their notifications
     user = Users.query.get(user_id)
     notifications = Notifications.query.filter_by(user_id=user_id).all()
+
+    # Render the template with the user's data and their notifications
     return render_template('notifications.html', user=user, notifications=notifications)
+
+@app.route('/paid_bill', methods=['POST'])
+def paid_bill():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized access"}), 401
+
+    try:
+        user_id = session['user_id']
+        bill_id = request.form.get('selectedBill')
+        logging.info(f"User ID: {user_id}, Bill ID: {bill_id}")
+
+        # Query the bill using bill_id
+        bill = Bills.query.get(bill_id)
+        if not bill:
+            return jsonify({"error": "Bill not found"}), 404
+
+        # Find the manager of the group this bill belongs to
+        group = Groups.query.get(bill.group_id)
+        if not group:
+            return jsonify({"error": "Group not found"}), 404
+
+        manager_id = group.manager_id
+
+        # Generate a new notification
+        notif_id = generate_hex_id('notif')
+        new_notification = Notifications(
+            notif_id=notif_id,
+            user_id=manager_id,
+            sender_id=user_id,
+            bill_id=bill.bill_id,
+            notif_type='confirmation',
+            content='',  # Content can be added later
+            read=False
+        )
+
+        # Add the notification to the database
+        db.session.add(new_notification)
+        db.session.commit()
+
+        return jsonify({"success": "Notification sent successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

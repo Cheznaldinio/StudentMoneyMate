@@ -8,7 +8,7 @@ db = SQLAlchemy()
 class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
                               'postgresql://postgres:postgres@localhost/StudentMoneyMate'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
 
 class Users(db.Model):
     user_id = db.Column(String(255), primary_key=True, nullable=True, server_default=text('NULL::character varying'))
@@ -43,14 +43,11 @@ class Bills(db.Model):
     bill_name = db.Column(String(255))
     group_id = db.Column(String(255), ForeignKey('groups.group_id'))
     amount = db.Column(Float)
-    recurrence = db.Column(Boolean)
     start_date = db.Column(TIMESTAMP)
-    frequency = db.Column(String(255))
-    reoccurrences = db.Column(Integer)
 
     def __str__(self):
-        return (f"Bills: {self.bill_id}, {self.bill_name}, {self.group_id}, {self.amount}, {self.recurrence}, "
-                f"{self.start_date}, {self.frequency}, {self.reoccurrences}")
+        return (f"Bills: {self.bill_id}, {self.bill_name}, {self.group_id}, {self.amount}, "
+                f"{self.start_date}")
 
 class GroupMembers(db.Model):
     group_id = db.Column(String(255), ForeignKey('groups.group_id'), primary_key=True)
@@ -62,9 +59,15 @@ class GroupMembers(db.Model):
 class Notifications(db.Model):
     notif_id = db.Column(Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(String(255), ForeignKey('users.user_id'))
+    sender_id = db.Column(String(255), ForeignKey('users.user_id'))
+    bill_id = db.Column(String(255), ForeignKey('bills.bill_id'))
     notif_type = db.Column(String(255))
     content = db.Column(String(255))
     read = db.Column(Boolean, default=False)
 
+    sender = db.relationship('Users', foreign_keys=[sender_id])
+    bill = db.relationship('Bills', foreign_keys=[bill_id])
+
     def __str__(self):
-        return f"Notification: {self.notif_id}, {self.user_id}, {self.notif_type}, {self.content}, {self.read}"
+        return (f"Notification: {self.notif_id}, {self.user_id}, {self.sender_id}, {self.bill_id}, "
+                f"{self.notif_type}, {self.content}, {self.read}")

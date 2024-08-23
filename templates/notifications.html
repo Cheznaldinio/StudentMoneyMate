@@ -1,10 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block title %}Student Money Mate - Notifications{% endblock %}
+
+{% block content %}
+    <div class="header">
+        <h2>Notifications</h2>
+    </div>
+
+    <div id="notifications-section">
+        {% if notifications %}
+            <ul class="notifications-list">
+                {% for notification in notifications %}
+                    <li class="notification-item {% if not notification.read %}unread{% endif %}">
+                        <div class="notification-content">
+                            <p><strong>Type:</strong> {{ notification.notif_type }}</p>
+                            <p><strong>Content:</strong> {{ notification.content }}</p>
+                            <p><strong>Sender:</strong>
+                                {% if notification.sender_id %}
+                                    {{ notification.sender.user_name }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                            <p><strong>Bill:</strong>
+                                {% if notification.bill_id %}
+                                    {{ notification.bill.bill_name }} (ID: {{ notification.bill_id }})
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="notification-status">
+                            {% if notification.read %}
+                                <span class="badge-read">Read</span>
+                            {% else %}
+                                <span class="badge-unread">Unread</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No notifications to display.</p>
+        {% endif %}
+    </div>
+{% endblock %}
