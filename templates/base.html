@@ -20,22 +20,100 @@
             overflow: hidden;
         }
 
-        .header {
+        .header-container {
+            width: 100%;
+            background-color: #f1f1f1;
+            box-shadow: 0 4px 2px -2px gray;
+            position: relative;
+            z-index: 1000;
+        }
+
+        /* Top Layer with Logo and Name */
+        .header-container .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            text-align: center;
-            margin-bottom: 20px;
+            padding: 10px 20px;
         }
 
-        .header h1 {
-            font-size: 24px;
+        .header-container .header-top h1 {
+            font-size: 20px;
+            margin: 0;
         }
 
-        .tab {
-            display: inline-block;
-            margin-right: 10px;
+        /* Bottom Layer with Navigation */
+        .header-container .header-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 20px;
+        }
+
+        .header-container .header-bottom nav {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .header-container .header-bottom nav a {
+            text-decoration: none;
+            color: #000;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-container .header-bottom nav a img {
+            margin-right: 5px;
+            height: 50px; /* Increased icon size */
+        }
+
+        .header-container .header-bottom nav a:hover {
+            text-decoration: underline;
+        }
+
+        .profile-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-button {
+            background: url('{{ url_for('static', filename=user.profile_picture if 'user' in session else 'profile.png') }}') no-repeat center center;
+            background-size: cover;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #000;
+            cursor: pointer;
+            border-radius: 50%;
+            background-color: white;
+            outline: none;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+
+        .profile-container:hover .dropdown-content {
+            display: block;
         }
 
         .group-info, .bills, .owed-info, .members, .buttons, .personal-account, .chart, .details-section, .profile-section {
@@ -112,93 +190,6 @@
             color: black;
             text-decoration: none;
             cursor: pointer;
-        }
-
-        /* Header Styles */
-        .header-container {
-            width: 100%;
-            background-color: #f1f1f1;
-            padding: 10px 0;
-            box-shadow: 0 4px 2px -2px gray;
-            position: relative;
-            z-index: 1000;
-        }
-
-        .header-container .header {
-            width: 800px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-container .header h1 {
-            font-size: 24px;
-            margin: 0;
-        }
-
-        .header-container .header nav {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .header-container .header nav a {
-            text-decoration: none;
-            color: #000;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-
-        .header-container .header nav a img {
-            margin-right: 5px;
-        }
-
-        .header-container .header nav a:hover {
-            text-decoration: underline;
-        }
-
-        .profile-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .profile-button {
-            background: url('{{ url_for('static', filename=user.profile_picture if 'user' in session else 'profile.png') }}') no-repeat center center;
-            background-size: cover;
-            width: 40px;
-            height: 40px;
-            border: 2px solid #000;
-            cursor: pointer;
-            border-radius: 50%;
-            background-color: white;
-            outline: none;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: white;
-            min-width: 120px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-        }
-
-        .dropdown-content a {
-            color: black;
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-        }
-
-        .dropdown-content a:hover {
-            background-color: #ddd;
-        }
-
-        .profile-container:hover .dropdown-content {
-            display: block;
         }
 
         .details-section {
@@ -282,7 +273,7 @@
             background-color: #333;
         }
 
-        .dark-mode .header-container .header nav a {
+        .dark-mode .header-container .header-bottom nav a {
             color: #fff;
         }
 
@@ -318,14 +309,23 @@
 </head>
 <body class="light-mode">
     <div class="header-container">
-        <div class="header">
+        <!-- Top Layer with Logo and Name -->
+        <div class="header-top">
             <h1>Student Money Mate &copy;</h1>
+        </div>
+
+        <!-- Bottom Layer with Navigation -->
+        <div class="header-bottom">
             <nav>
-                <a href="/notifications" target="_top">
-                    <img src="{{ url_for('static', filename='mail.svg') }}" alt="Mail Icon" width="40" height="40">
+                <a href="/home" target="_top">
+                    <img src="{{ url_for('static', filename='home.png') }}" alt="Home Icon">
                 </a>
-                <a href="/home" target="_top">Flat</a>
-                <a href="/individual" target="_top">Individual</a>
+                <a href="/individual" target="_top">
+                    <img src="{{ url_for('static', filename='individual.jpg') }}" alt="Individual Icon">
+                </a>
+                <a href="/notifications" target="_top">
+                    <img src="{{ url_for('static', filename='mail.svg') }}" alt="Mail Icon">
+                </a>
                 <div class="profile-container">
                     <a href="/account" target="_top">
                         <button class="profile-button"></button>
