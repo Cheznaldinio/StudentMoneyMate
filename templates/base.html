@@ -6,63 +6,78 @@
     <title>{% block title %}Student Money Mate{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo2.png') }}">
     <style>
+        /* Original Styles */
         body {
             font-family: Arial, sans-serif;
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
+
         .container {
-            width: 800px; /* Adjusted to match all pages */
+            width: 800px;
             margin: 0 auto;
             border: 1px solid #ccc;
             padding: 20px;
-            overflow: hidden; /* Handle overflow */
+            overflow: hidden;
         }
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            text-align: center; /* Added for the specific page's header */
-            margin-bottom: 20px; /* Added for the specific page's header */
+            text-align: center;
+            margin-bottom: 20px;
         }
+
         .header h1 {
             font-size: 24px;
         }
+
         .tab {
             display: inline-block;
             margin-right: 10px;
             font-weight: bold;
         }
+
         .group-info, .bills, .owed-info, .members, .buttons, .personal-account, .chart, .details-section, .profile-section {
             margin-top: 20px;
         }
+
         .bills table, .owed-info table, .members ul, .buttons, .personal-account, .chart, .details-section {
             width: 100%;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
+
         table, th, td {
             border: 1px solid #000;
         }
+
         th, td {
             padding: 10px;
             text-align: left;
         }
+
         .members ul {
             list-style: none;
             padding: 0;
         }
+
         .members li {
             margin: 5px 0;
         }
+
         .buttons button, .buttons form {
             margin-right: 10px;
             padding: 10px 20px;
             cursor: pointer;
             display: inline-block;
         }
-        /* Add styles for the modal */
+
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -76,6 +91,7 @@
             background-color: rgba(0,0,0,0.4);
             padding-top: 60px;
         }
+
         .modal-content {
             background-color: #fefefe;
             margin: 5% auto;
@@ -83,18 +99,22 @@
             border: 1px solid #888;
             width: 80%;
         }
+
         .close {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
         }
+
         .close:hover,
         .close:focus {
             color: black;
             text-decoration: none;
             cursor: pointer;
         }
+
+        /* Header Styles */
         .header-container {
             width: 100%;
             background-color: #f1f1f1;
@@ -103,6 +123,7 @@
             position: relative;
             z-index: 1000;
         }
+
         .header-container .header {
             width: 800px;
             margin: 0 auto;
@@ -110,32 +131,39 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .header-container .header h1 {
             font-size: 24px;
             margin: 0;
         }
+
         .header-container .header nav {
             display: flex;
             gap: 20px;
             align-items: center;
         }
+
         .header-container .header nav a {
             text-decoration: none;
             color: #000;
             font-weight: bold;
             display: flex;
-            align-items: center; /* Center icon and text vertically */
+            align-items: center;
         }
+
         .header-container .header nav a img {
-            margin-right: 5px; /* Space between icon and text */
+            margin-right: 5px;
         }
+
         .header-container .header nav a:hover {
             text-decoration: underline;
         }
+
         .profile-container {
             position: relative;
             display: inline-block;
         }
+
         .profile-button {
             background: url('{{ url_for('static', filename=user.profile_picture if 'user' in session else 'profile.png') }}') no-repeat center center;
             background-size: cover;
@@ -147,6 +175,7 @@
             background-color: white;
             outline: none;
         }
+
         .dropdown-content {
             display: none;
             position: absolute;
@@ -156,39 +185,138 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             z-index: 1001;
         }
+
         .dropdown-content a {
             color: black;
             padding: 12px 16px;
             text-decoration: none;
             display: block;
         }
+
         .dropdown-content a:hover {
             background-color: #ddd;
         }
+
         .profile-container:hover .dropdown-content {
             display: block;
         }
+
         .details-section {
             margin-bottom: 20px;
         }
+
         .details-section p {
             margin: 5px 0;
         }
+
         .details-section p span {
             font-weight: bold;
         }
+
         .edit-section {
             display: none;
         }
+
         .profile-section img {
             border-radius: 50%;
-            width: 100px; /* Set width */
-            height: 100px; /* Set height */
-            object-fit: cover; /* Ensure the image covers the container */
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+        }
+
+        /* Toggle Button Styles */
+        .toggle-button {
+            background-color: #e0e0e0;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px;
+            width: 50px;
+            height: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .toggle-button .icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            position: absolute;
+        }
+
+        .toggle-button .sun {
+            background: linear-gradient(45deg, #f9d71c, #f9a825);
+            left: 5px;
+            opacity: 1;
+        }
+
+        .toggle-button .moon {
+            background: linear-gradient(45deg, #9099a2, #67727d);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            right: 5px;
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+
+        .toggle-button.dark .sun {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+
+        .toggle-button.dark .moon {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Dark Mode Specific Styles */
+        .dark-mode {
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+
+        .dark-mode .header-container {
+            background-color: #333;
+        }
+
+        .dark-mode .header-container .header nav a {
+            color: #fff;
+        }
+
+        .dark-mode .container {
+            border-color: #555;
+        }
+
+        .dark-mode table, .dark-mode th, .dark-mode td {
+            border-color: #444;
+        }
+
+        .dark-mode .modal-content {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .dark-mode .dropdown-content {
+            background-color: #444;
+        }
+
+        .dark-mode .dropdown-content a {
+            color: #fff;
+        }
+
+        .dark-mode .dropdown-content a:hover {
+            background-color: #555;
+        }
+
+        .dark-mode .close {
+            color: #fff;
         }
     </style>
 </head>
-<body>
+<body class="light-mode">
     <div class="header-container">
         <div class="header">
             <h1>Student Money Mate &copy;</h1>
@@ -207,6 +335,11 @@
                         <a href="/logout" target="_top">Log Out</a>
                     </div>
                 </div>
+                <!-- Light/Dark Mode Toggle Button -->
+                <button class="toggle-button" onclick="toggleMode()">
+                    <div class="icon sun"></div>
+                    <div class="icon moon"></div>
+                </button>
             </nav>
         </div>
     </div>
@@ -214,5 +347,12 @@
         {% block content %}{% endblock %}
     </div>
     {% block extra_scripts %}{% endblock %}
+
+    <script>
+        function toggleMode() {
+            document.body.classList.toggle('dark-mode');
+            document.querySelector('.toggle-button').classList.toggle('dark');
+        }
+    </script>
 </body>
 </html>
