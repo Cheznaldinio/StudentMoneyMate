@@ -154,6 +154,18 @@
             position: relative;
             top: 2px;
         }
+        .flash {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .flash.error {
+            color: white;
+            background-color: red;
+        }
     </style>
     <script>
         function setRememberMe() {
@@ -166,6 +178,14 @@
             if (rememberMe === 'true') {
                 document.getElementById('rememberMe').checked = true;
             }
+
+            // Hide flash messages after 3 seconds
+            setTimeout(function() {
+                const flashMessages = document.querySelectorAll('.flash');
+                flashMessages.forEach(function(flashMessage) {
+                    flashMessage.style.display = 'none';
+                });
+            }, 3000); // 3000 milliseconds = 3 seconds
         }
     </script>
 </head>
@@ -181,6 +201,18 @@
                     <p class="medium-font">Ready to save?</p>
                     <p class="bold-font">Continue your journey:</p>
                 </div>
+
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flashes">
+                            {% for category, message in messages %}
+                                <div class="flash {{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
                 <form action="/login" method="POST" onsubmit="setRememberMe()">
                     <div class="form-group">
                         <input type="email" name="accountEmail" placeholder="example@email.com" required>

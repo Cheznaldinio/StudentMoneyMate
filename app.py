@@ -77,14 +77,15 @@ def login():
                     resp.set_cookie('rememberMe', 'false', max_age=30*24*60*60)
                 return resp
 
-            error_message = {"error": "Invalid email or password"}
-            return jsonify(error_message), 401
+            # If login fails, render the login page with an error message
+            flash('Invalid email or password', 'error')
+            return render_template('login.html')
 
         except Exception as e:
-            error_message = {"error": str(e)}
-            return jsonify(error_message), 400
+            flash(f'Error: {str(e)}', 'error')
+            return render_template('login.html')
 
-    return jsonify({"error": "Invalid request method"}), 405
+    return render_template('login.html')
 
 @app.route('/create', methods=['GET'])
 def create():
