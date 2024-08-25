@@ -98,7 +98,9 @@
     <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
 </div>
 <div class="buttons">
-    <button id="addSplitBtn">Add a Split</button>
+    <button id="makeBillBtn">Make a Bill</button>
+    <button id="makeGroupBtn">Make a Group</button>
+    <button id="showGroupsBtn">Show Groups</button>
     <button id="paidBillBtn">I have paid Someone</button>
 </div>
 {% endif %}
@@ -117,68 +119,70 @@
     </div>
 </div>
 
-<!-- Modal for Adding a Split -->
-<div id="addSplitModal" class="modal">
+<!-- Modal for Making a Group -->
+<div id="makeGroupModal" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
-        <form id="addSplitForm" action="{{ url_for('add_split') }}" method="POST">
-            <label for="groupSelection">Select Group:</label>
-            <div id="groupSelection">
-                <input type="radio" name="groupOption" value="existing" id="existingGroup" checked> Existing Group
-                <br>
-                <table id="existingGroupsTable">
-                    <tr>
-                        <th>Select</th>
-                        <th>Group Name</th>
-                        <th>Group Type</th>
-                        <th>Existing Bills</th>
-                    </tr>
-                    {% for group in managed_flat_groups + managed_non_flat_groups if group.group_type != 'event' %}
-                    <tr>
-                        <td><input type="radio" name="selectedGroup" value="{{ group.group_id }}"></td>
-                        <td>{{ group.group_name }}</td>
-                        <td>{{ group.group_type }}</td>
-                        <td>
-                            <ul>
-                                {% for bill in group.bills %}
-                                <li>{{ bill.bill_name }} (£{{ bill.amount }})</li>
-                                {% endfor %}
-                            </ul>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-                <br>
-                <input type="radio" name="groupOption" value="new" id="newGroup"> New Group
-                <br>
-                <div id="newGroupUsers" style="display:none;">
-                    <label for="splitType">Select Type:</label>
-                    <select id="splitType" name="splitType" required>
-                        <option value="subgroup">Subgroup</option>
-                        <option value="event">Event</option>
-                    </select>
-                    <span class="tooltip">
-                        <i> i </i>
-                        <span class="tooltiptext"><b>Subgroup:</b> For a frequently shared expense<br><b>Event:</b> For one-off splits.</span>
-                    </span>
-                    <br><br>
-                    <label for="newGroupName">New Group Name:</label>
-                    <input type="text" id="newGroupName" name="newGroupName">
-                    <br><br>
-                    <label>Select Users:</label>
-                    <div>
-                        <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}" id="alwaysSelectedCheckbox" checked>
-                        {{ user.user_name }}
-                    </div>
-                    {% for member in flat_group_members %}
-                    {% if member.user_id != user.user_id %}
-                    <div>
-                        <input type="checkbox" name="selectedUsers" value="{{ member.user_id }}"> {{ member.user_name }}
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
+        <form id="makeGroupForm" action="{{ url_for('create_group') }}" method="POST">
+            <label for="splitType">Select Type:</label>
+            <select id="splitType" name="splitType" required>
+                <option value="subgroup">Subgroup</option>
+                <option value="event">Event</option>
+            </select>
+            <span class="tooltip">
+                <i> i </i>
+                <span class="tooltiptext"><b>Subgroup:</b> For a frequently shared expense<br><b>Event:</b> For one-off splits.</span>
+            </span>
+            <br><br>
+            <label for="newGroupName">New Group Name:</label>
+            <input type="text" id="newGroupName" name="newGroupName" required>
+            <br><br>
+            <label>Select Users:</label>
+            <div>
+                <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}" id="alwaysSelectedCheckbox" checked>
+                {{ user.user_name }}
             </div>
+            {% for member in flat_group_members %}
+            {% if member.user_id != user.user_id %}
+            <div>
+                <input type="checkbox" name="selectedUsers" value="{{ member.user_id }}"> {{ member.user_name }}
+            </div>
+            {% endif %}
+            {% endfor %}
+            <br><br>
+            <button type="submit">Create Group</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal for Making a Bill -->
+<div id="makeBillModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <form id="makeBillForm" action="{{ url_for('create_bill') }}" method="POST">
+            <label for="groupSelection">Select Group:</label>
+            <table id="existingGroupsTable">
+                <tr>
+                    <th>Select</th>
+                    <th>Group Name</th>
+                    <th>Group Type</th>
+                    <th>Existing Bills</th>
+                </tr>
+                {% for group in managed_flat_groups + managed_non_flat_groups if group.group_type != 'event' %}
+                <tr>
+                    <td><input type="radio" name="selectedGroup" value="{{ group.group_id }}"></td>
+                    <td>{{ group.group_name }}</td>
+                    <td>{{ group.group_type }}</td>
+                    <td>
+                        <ul>
+                            {% for bill in group.bills %}
+                            <li>{{ bill.bill_name }} (£{{ bill.amount }})</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
             <br><br>
             <label for="billName">Bill Name:</label>
             <input type="text" id="billName" name="billName" required>
@@ -186,35 +190,42 @@
             <label for="billAmount">Bill Amount:</label>
             <input type="number" id="billAmount" name="billAmount" step="0.5" required min="1.00" max="5000.00">
             <br><br>
-            <div id="flatOnlyFields" style="display: none;">
-                <label for="startDate">Start Date:</label>
-                <input type="date" id="startDate" name="startDate">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" name="startDate">
+            <br><br>
+            <div id="reoccurringOption">
+                <input type="checkbox" id="reoccurring" name="reoccurring">
+                <label for="reoccurring">Re-occurring</label>
                 <br><br>
-                <div id="reoccurringOption">
-                    <input type="checkbox" id="reoccurring" name="reoccurring">
-                    <label for="reoccurring">Re-occurring</label>
+                <div id="reoccurringDetails" style="display: none;">
+                    <label for="frequency">Frequency:</label>
+                    <select id="frequency" name="frequency">
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="custom">Custom</option>
+                    </select>
                     <br><br>
-                    <div id="reoccurringDetails" style="display: none;">
-                        <label for="frequency">Frequency:</label>
-                        <select id="frequency" name="frequency">
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                        <br><br>
-                        <label for="reoccurrences">Re-occurrences:</label>
-                        <input type="number" id="reoccurrences" name="reoccurrences" min="1" max="20">
-                        <br><br>
-                        <div id="customFrequency" style="display: none;">
-                            <label for="customDays">Days:</label>
-                            <input type="number" id="customDays" name="customDays" min="2" max="30">
-                        </div>
+                    <label for="reoccurrences">Re-occurrences:</label>
+                    <input type="number" id="reoccurrences" name="reoccurrences" min="1" max="20">
+                    <br><br>
+                    <div id="customFrequency" style="display: none;">
+                        <label for="customDays">Days:</label>
+                        <input type="number" id="customDays" name="customDays" min="2" max="30">
                     </div>
                 </div>
             </div>
             <br><br>
-            <button type="submit">Add Split</button>
+            <button type="submit">Create Bill</button>
         </form>
+    </div>
+</div>
+
+<!-- Modal for Showing Groups -->
+<div id="showGroupsModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Groups Information</h2>
+        <div id="groupDetails"></div>
     </div>
 </div>
 
@@ -263,9 +274,17 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         // Get modal elements
-        var addSplitModal = document.getElementById("addSplitModal");
-        var addSplitBtn = document.getElementById("addSplitBtn");
-        var addSplitSpan = addSplitModal.getElementsByClassName("close")[0];
+        var makeBillModal = document.getElementById("makeBillModal");
+        var makeBillBtn = document.getElementById("makeBillBtn");
+        var makeBillSpan = makeBillModal.getElementsByClassName("close")[0];
+
+        var makeGroupModal = document.getElementById("makeGroupModal");
+        var makeGroupBtn = document.getElementById("makeGroupBtn");
+        var makeGroupSpan = makeGroupModal.getElementsByClassName("close")[0];
+
+        var showGroupsModal = document.getElementById("showGroupsModal");
+        var showGroupsBtn = document.getElementById("showGroupsBtn");
+        var showGroupsSpan = showGroupsModal.getElementsByClassName("close")[0];
 
         var createFlatModal = document.getElementById("createFlatModal");
         var createFlatBtn = document.getElementById("createFlatBtn");
@@ -275,43 +294,76 @@
         var paidBillBtn = document.getElementById("paidBillBtn");
         var paidBillSpan = paidBillModal.getElementsByClassName("close")[0];
 
-        var existingGroupRadio = document.getElementById("existingGroup");
-        var newGroupRadio = document.getElementById("newGroup");
-        var newGroupUsersDiv = document.getElementById("newGroupUsers");
-        var existingGroupsTable = document.getElementById("existingGroupsTable");
-        var newGroupNameInput = document.getElementById("newGroupName");
-        var splitTypeSelect = document.getElementById("splitType");
-        var flatOnlyFields = document.getElementById("flatOnlyFields");
-
-        // Ensure elements are selected correctly
-        console.log(createFlatBtn, createFlatModal, createFlatSpan, addSplitBtn);
-
         // When the user clicks the button, open the modal
-        if (addSplitBtn) {
-            addSplitBtn.onclick = function() {
-                console.log("Add Split Button Clicked");
-                addSplitModal.style.display = "block";
+        if (makeBillBtn) {
+            makeBillBtn.onclick = function() {
+                makeBillModal.style.display = "block";
+            }
+        }
+
+        if (makeGroupBtn) {
+            makeGroupBtn.onclick = function() {
+                makeGroupModal.style.display = "block";
+            }
+        }
+
+        if (showGroupsBtn) {
+            showGroupsBtn.onclick = function() {
+                fetch('{{ url_for("group_details") }}')
+                .then(response => response.json())
+                .then(data => {
+                    var groupDetails = document.getElementById("groupDetails");
+                    groupDetails.innerHTML = '';
+                    data.forEach(group => {
+                        var groupInfo = `
+                            <div>
+                                <h3>${group.group_name} (${group.group_type})</h3>
+                                <p>Manager: ${group.manager_name} ${group.is_manager ? '(You)' : ''}</p>
+                                <p>Members: ${group.members_count}</p>
+                                <h4>Bills:</h4>
+                                <ul>
+                                    ${group.bills.map(bill => `
+                                        <li>${bill.bill_name}: £${bill.amount} (Due: ${bill.start_date})</li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <hr>
+                        `;
+                        groupDetails.innerHTML += groupInfo;
+                    });
+                });
+                showGroupsModal.style.display = "block";
             }
         }
 
         if (createFlatBtn) {
             createFlatBtn.onclick = function() {
-                console.log("Create Flat Button Clicked");
                 createFlatModal.style.display = "block";
             }
         }
 
         if (paidBillBtn) {
             paidBillBtn.onclick = function() {
-                console.log("Paid Bill Button Clicked");
                 paidBillModal.style.display = "block";
             }
         }
 
         // When the user clicks on <span> (x), close the modal
-        if (addSplitSpan) {
-            addSplitSpan.onclick = function() {
-                addSplitModal.style.display = "none";
+        if (makeBillSpan) {
+            makeBillSpan.onclick = function() {
+                makeBillModal.style.display = "none";
+            }
+        }
+
+        if (makeGroupSpan) {
+            makeGroupSpan.onclick = function() {
+                makeGroupModal.style.display = "none";
+            }
+        }
+
+        if (showGroupsSpan) {
+            showGroupsSpan.onclick = function() {
+                showGroupsModal.style.display = "none";
             }
         }
 
@@ -329,46 +381,16 @@
 
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
-            if (event.target == addSplitModal) {
-                addSplitModal.style.display = "none";
+            if (event.target == makeBillModal) {
+                makeBillModal.style.display = "none";
+            } else if (event.target == makeGroupModal) {
+                makeGroupModal.style.display = "none";
+            } else if (event.target == showGroupsModal) {
+                showGroupsModal.style.display = "none";
             } else if (event.target == createFlatModal) {
                 createFlatModal.style.display = "none";
             } else if (event.target == paidBillModal) {
                 paidBillModal.style.display = "none";
-            }
-        }
-
-        // Show/Hide new group users selection based on radio button
-        if (existingGroupRadio) {
-            existingGroupRadio.onclick = function() {
-                newGroupUsersDiv.style.display = "none";
-                existingGroupsTable.style.display = "block";
-                newGroupNameInput.removeAttribute('required');
-                splitTypeSelect.removeAttribute('required');
-                splitTypeSelect.style.display = 'none'; // Hide split type select
-                flatOnlyFields.style.display = 'none'; // Hide flat-only fields
-            }
-        }
-
-        if (newGroupRadio) {
-            newGroupRadio.onclick = function() {
-                newGroupUsersDiv.style.display = "block";
-                existingGroupsTable.style.display = "none";
-                newGroupNameInput.setAttribute('required', 'required');
-                splitTypeSelect.setAttribute('required', 'required');
-                splitTypeSelect.style.display = 'inline'; // Show split type select
-                flatOnlyFields.style.display = 'none'; // Hide flat-only fields
-            }
-        }
-
-        // Ensure the new group name is required if displayed
-        document.getElementById("addSplitForm").onsubmit = function() {
-            if (newGroupUsersDiv.style.display !== "none") {
-                newGroupNameInput.setAttribute('required', 'required');
-                splitTypeSelect.setAttribute('required', 'required');
-            } else {
-                newGroupNameInput.removeAttribute('required');
-                splitTypeSelect.removeAttribute('required');
             }
         }
 
@@ -385,9 +407,9 @@
             radio.addEventListener('change', function() {
                 const groupType = this.closest('tr').querySelector('td:nth-child(3)').innerText.trim();
                 if (groupType === 'flat') {
-                    flatOnlyFields.style.display = 'block';
+                    document.getElementById('reoccurringOption').style.display = 'block';
                 } else {
-                    flatOnlyFields.style.display = 'none';
+                    document.getElementById('reoccurringOption').style.display = 'none';
                     reoccurringCheckbox.checked = false;
                     reoccurringDetails.style.display = 'none';
                     customFrequency.style.display = 'none';

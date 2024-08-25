@@ -244,14 +244,43 @@ def home():
                            managed_flat_groups=managed_flat_groups,
                            managed_non_flat_groups=managed_non_flat_groups)
 
-@app.route('/add_split', methods=['POST'])
-def add_split():
+@app.route('/create_group', methods=['POST'])
+def create_group():
     if 'user_id' not in session:
         return redirect(url_for('index'))
 
     user_id = session['user_id']
+    group_name = request.form.get('newGroupName')
     split_type = request.form.get('splitType')
-    group_option = request.form.get('groupOption')
+    selected_users = request.form.getlist('selectedUsers')
+
+    try:
+        new_group_id = generate_hex_id('group')
+        group = Groups(group_id=new_group_id, group_name=group_name, manager_id=user_id, group_type=split_type)
+        db.session.add(group)
+        db.session.commit()
+
+        for selected_user_id in selected_users:
+            group_member = GroupMembers(group_id=new_group_id, user_id=selected_user_id)
+            db.session.add(group_member)
+
+        db.session.commit()
+
+        flash('Group created successfully!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating group: {str(e)}', 'error')
+
+    return redirect(url_for('home'))
+
+@app.route('/create_bill', methods=['POST'])
+def create_bill():
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+
+    user_id = session['user_id']
+    group_id = request.form.get('selectedGroup')
     bill_name = request.form.get('billName')
     bill_amount_str = request.form.get('billAmount')
     start_date_str = request.form.get('startDate', None)
@@ -260,13 +289,11 @@ def add_split():
     reoccurrences_str = request.form.get('reoccurrences', '0')
     custom_days_str = request.form.get('customDays', '0')
 
-    if split_type not in ['subgroup', 'event']:
-        return jsonify({"error": "Invalid split type"}), 400
-
     try:
         bill_amount = float(bill_amount_str)
     except ValueError:
-        return jsonify({"error": "Invalid bill amount"}), 400
+        flash('Invalid bill amount', 'error')
+        return redirect(url_for('home'))
 
     try:
         reoccurrences = int(reoccurrences_str)
@@ -279,32 +306,18 @@ def add_split():
         custom_days = 0
 
     try:
-        if group_option == 'existing':
-            group_id = request.form.get('selectedGroup')
-            group = Groups.query.get(group_id)
-            if not group:
-                return jsonify({"error": "Group not found"}), 404
-        else:
-            new_group_name = request.form.get('newGroupName')
-            if not new_group_name:
-                return jsonify({"error": "Group name cannot be empty"}), 400
-            selected_users = request.form.getlist('selectedUsers')
-            new_group_id = generate_hex_id('group')
-            group = Groups(group_id=new_group_id, group_name=new_group_name, manager_id=user_id, group_type=split_type)
-            db.session.add(group)
-            db.session.commit()
-
-            for user_id in selected_users:
-                group_member = GroupMembers(group_id=group.group_id, user_id=user_id)
-                db.session.add(group_member)
-            db.session.commit()
+        group = Groups.query.get(group_id)
+        if not group:
+            flash('Group not found', 'error')
+            return redirect(url_for('home'))
 
         # Convert start_date_str to a datetime object
         if start_date_str:
             try:
                 start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
             except ValueError:
-                return jsonify({"error": "Invalid start date format. Use YYYY-MM-DD."}), 400
+                flash('Invalid start date format. Use YYYY-MM-DD.', 'error')
+                return redirect(url_for('home'))
         else:
             start_date = None
 
@@ -335,11 +348,13 @@ def add_split():
 
         db.session.commit()
 
-        return redirect(url_for('home'))
+        flash('Bill created successfully!', 'success')
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+        flash(f'Error creating bill: {str(e)}', 'error')
+
+    return redirect(url_for('home'))
 
 @app.route('/individual', methods=['GET'])
 def individual():
@@ -503,6 +518,50 @@ def paid_bill():
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/group_details', methods=['GET'])
+def group_details():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized access"}), 401
+
+    user_id = session['user_id']
+    try:
+        flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+            .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
+
+        non_flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+            .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
+
+        all_groups = flat_groups + non_flat_groups
+
+        group_info = []
+        for group in all_groups:
+            group_manager = Users.query.get(group.manager_id)
+            is_manager = group.manager_id == user_id
+            members_count = GroupMembers.query.filter_by(group_id=group.group_id).count()
+            bills = Bills.query.filter_by(group_id=group.group_id).all()
+
+            bill_details = [
+                {
+                    'bill_name': bill.bill_name,
+                    'amount': bill.amount,
+                    'start_date': bill.start_date.strftime('%Y-%m-%d') if bill.start_date else 'N/A'
+                } for bill in bills
+            ]
+
+            group_info.append({
+                'group_name': group.group_name,
+                'group_type': group.group_type,
+                'manager_name': group_manager.user_name if group_manager else 'N/A',
+                'is_manager': is_manager,
+                'members_count': members_count,
+                'bills': bill_details
+            })
+
+        return jsonify(group_info)
+
+    except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
