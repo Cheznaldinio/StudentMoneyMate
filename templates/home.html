@@ -225,7 +225,22 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <h2>Groups Information</h2>
-        <div id="groupDetails"></div>
+        <div id="groupDetails">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>NAME</th>
+                        <th>MEMBERS (#)</th>
+                        <th>MANAGER</th>
+                        <th>BILLS (#)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="groupDetailsBody">
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -312,24 +327,26 @@
                 fetch('{{ url_for("group_details") }}')
                 .then(response => response.json())
                 .then(data => {
-                    var groupDetails = document.getElementById("groupDetails");
-                    groupDetails.innerHTML = '';
+                    var groupDetailsBody = document.getElementById("groupDetailsBody");
+                    groupDetailsBody.innerHTML = '';
                     data.forEach(group => {
+                        var managerTickCross = group.is_manager ? '&#10004;' : '&#10008;';
+                        var memberEmails = group.member_emails.map(email => `<li>${email}</li>`).join('');
                         var groupInfo = `
-                            <div>
-                                <h3>${group.group_name} (${group.group_type})</h3>
-                                <p>Manager: ${group.manager_name} ${group.is_manager ? '(You)' : ''}</p>
-                                <p>Members: ${group.members_count}</p>
-                                <h4>Bills:</h4>
-                                <ul>
-                                    ${group.bills.map(bill => `
-                                        <li>${bill.bill_name}: £${bill.amount} (Due: ${bill.start_date})</li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                            <hr>
+                            <tr>
+                                <td>${group.group_id}</td>
+                                <td>${group.group_name}</td>
+                                <td class="tooltip">${group.members_count}
+                                    <span class="tooltiptext">
+                                        <ul>${memberEmails}</ul>
+                                    </span>
+                                </td>
+                                <td style="text-align:center;">${managerTickCross}</td>
+                                <td>${group.bills_count}</td>
+                                <td></td>
+                            </tr>
                         `;
-                        groupDetails.innerHTML += groupInfo;
+                        groupDetailsBody.innerHTML += groupInfo;
                     });
                 });
                 showGroupsModal.style.display = "block";
@@ -470,10 +487,10 @@
 
     .tooltip .tooltiptext {
         visibility: hidden;
-        width: 220px;
+        width: 600px;
         background-color: black;
         color: #fff;
-        text-align: center;
+        text-align: left;
         border-radius: 6px;
         padding: 5px;
         position: absolute;

@@ -537,26 +537,19 @@ def group_details():
 
         group_info = []
         for group in all_groups:
-            group_manager = Users.query.get(group.manager_id)
             is_manager = group.manager_id == user_id
-            members_count = GroupMembers.query.filter_by(group_id=group.group_id).count()
-            bills = Bills.query.filter_by(group_id=group.group_id).all()
-
-            bill_details = [
-                {
-                    'bill_name': bill.bill_name,
-                    'amount': bill.amount,
-                    'start_date': bill.start_date.strftime('%Y-%m-%d') if bill.start_date else 'N/A'
-                } for bill in bills
-            ]
+            members = GroupMembers.query.filter_by(group_id=group.group_id).all()
+            members_count = len(members)
+            member_emails = [Users.query.get(member.user_id).email for member in members]
+            bills_count = Bills.query.filter_by(group_id=group.group_id).count()
 
             group_info.append({
+                'group_id': group.group_id,
                 'group_name': group.group_name,
-                'group_type': group.group_type,
-                'manager_name': group_manager.user_name if group_manager else 'N/A',
-                'is_manager': is_manager,
                 'members_count': members_count,
-                'bills': bill_details
+                'member_emails': member_emails,
+                'is_manager': is_manager,
+                'bills_count': bills_count
             })
 
         return jsonify(group_info)
