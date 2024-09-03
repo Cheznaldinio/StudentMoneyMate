@@ -249,15 +249,32 @@
     <div class="modal-content">
         <span class="close">&times;</span>
         <h3>Select a Bill to Mark as Paid</h3>
-        <form id="paidBillForm">
+        <form id="paidBillForm" action="{{ url_for('paid_bill') }}" method="POST">
             <label for="paidBillSelect">Select Bill:</label>
-            <select id="paidBillSelect" name="selectedBill" required>
-                {% for bill in non_flat_bills %}
-                <option value="{{ bill.bill_id }}">{{ bill.bill_name }} - £{{ '%.2f' % bill.personal_cost }} (Due: {% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %})</option>
-                {% endfor %}
-            </select>
+            <table id="paidBillTable">
+                <tr>
+                    <th>Select</th>
+                    <th>Bill Name</th>
+                    <th>Personal Cost</th>
+                    <th>Due Date</th>
+                </tr>
+                {% if non_flat_bills %}
+                    {% for bill in non_flat_bills %}
+                    <tr>
+                        <td><input type="radio" name="selectedBill" value="{{ bill.bill_id }}" required></td>
+                        <td>{{ bill.bill_name }}</td>
+                        <td>£{{ '%.2f' % bill.personal_cost }}</td>
+                        <td>{% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align:center;">No bills available</td>
+                    </tr>
+                {% endif %}
+            </table>
             <br><br>
-            <button type="button" id="markAsPaidBtn">I have paid this</button>
+            <button type="submit" id="markAsPaidBtn">I have paid this</button>
         </form>
     </div>
 </div>
@@ -433,47 +450,6 @@
                 }
             });
         });
-
-        // When the "I have paid this" button is clicked
-        var markAsPaidBtn = document.getElementById("markAsPaidBtn");
-        if (markAsPaidBtn) {
-            markAsPaidBtn.onclick = function() {
-                console.log("Mark as Paid button clicked.");
-
-                var selectedBill = document.getElementById("paidBillSelect").value;
-                console.log("Selected Bill ID:", selectedBill);
-
-                // Send an AJAX request to the /paid_bill route
-                fetch('{{ url_for("paid_bill") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'selectedBill=' + encodeURIComponent(selectedBill)
-                })
-                .then(response => {
-                    console.log("Received response from server.");
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        console.error("Error from server:", data.error);
-                        alert("Error: " + data.error);
-                    } else {
-                        console.log("Success from server:", data.success);
-                        alert("Notification sent successfully");
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error in fetch operation:", error);
-                });
-
-                // Close the modal
-                paidBillModal.style.display = "none";
-            }
-        } else {
-            console.error("Mark as Paid button not found.");
-        }
     });
 </script>
 
