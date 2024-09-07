@@ -7,7 +7,7 @@ db = SQLAlchemy()
 
 class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
-                              'postgresql://postgres:postgres@localhost/StudentMoneyMate'
+                              'postgresql://postgres:postgresql@localhost/StudentMoneyMate'
     SQLALCHEMY_TRACK_MODIFICATIONS = True
 
 class Users(db.Model):
@@ -30,24 +30,46 @@ class Groups(db.Model):
         return f"Group: {self.group_id}, {self.group_name}, {self.manager_id}, {self.group_type}"
 
 class Ledger(db.Model):
-    payment_id = db.Column(String(255), primary_key=True)
+    ledger_id = db.Column(String(255), primary_key=True)
     bill_id = db.Column(String(255), ForeignKey('bills.bill_id'))
+    bill_name = db.Column(String(255))
     user_id = db.Column(String(255), ForeignKey('users.user_id'))
-    confirmed = db.Column(Boolean)
+    user_name = db.Column(String(255))
+    creditor_id = db.Column(String(255))
+    creditor_name = db.Column(String(255))
+    group_id = db.Column(String(255), ForeignKey('groups.group_id'))
+    group_name = db.Column(String(255))
+    amount = db.Column(Float)
+    status = db.Column(String(50))  # 'owe', 'paid', etc.
+    due_date = db.Column(TIMESTAMP)
+    created_at = db.Column(db.TIMESTAMP, default=db.func.current_timestamp())
+    updated_at = db.Column(db.TIMESTAMP, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
     def __str__(self):
-        return f"Ledger: {self.payment_id}, {self.bill_id}, {self.user_id}, {self.confirmed}"
+        return (f"Ledger: {self.ledger_id}, Bill: {self.bill_name}, Bill ID: {self.bill_id}, "
+                f"User: {self.user_name} (ID: {self.user_id}), Creditor: {self.creditor_name} (ID: {self.creditor_id}), "
+                f"Group: {self.group_name} (ID: {self.group_id}), Amount: {self.amount}, "
+                f"Status: {self.status}, Due Date: {self.due_date}, "
+                f"Created: {self.created_at}, Updated: {self.updated_at}")
+
+
 
 class Bills(db.Model):
-    bill_id = db.Column(String(255), primary_key=True)
-    bill_name = db.Column(String(255))
-    group_id = db.Column(String(255), ForeignKey('groups.group_id'))
-    amount = db.Column(Float)
-    start_date = db.Column(TIMESTAMP)
+    __tablename__ = 'bills'
 
+    bill_id = db.Column(db.String(255), primary_key=True)
+    bill_name = db.Column(db.String(255), nullable=False)
+    group_id = db.Column(db.String(255), db.ForeignKey('groups.group_id'), nullable=False)
+    bill_type = db.Column(db.String(50), nullable=False)  # 'one_off' or 'recurring'
+    amount = db.Column(db.Float, nullable=False)
+    start_date = db.Column(db.TIMESTAMP, nullable=True)
+    frequency = db.Column(db.String(50), nullable=True)  # e.g., 'monthly', 'weekly', etc.
+    end_date = db.Column(db.TIMESTAMP, nullable=True)  # End date for recurring bills
+    created_by = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(50), nullable=False)
     def __str__(self):
-        return (f"Bills: {self.bill_id}, {self.bill_name}, {self.group_id}, {self.amount}, "
-                f"{self.start_date}")
+        return (f"Bills: {self.bill_id}, {self.bill_name}, {self.group_id}, {self.bill_type}, "
+                f"{self.amount}, {self.start_date}, {self.frequency}, {self.end_date}, {self.created_by}, {self.status}")
 
 class GroupMembers(db.Model):
     group_id = db.Column(String(255), ForeignKey('groups.group_id'), primary_key=True)

@@ -3,45 +3,73 @@
 {% block title %}Student Money Mate - Notifications{% endblock %}
 
 {% block content %}
-    <div class="header">
-        <h2>Notifications</h2>
-    </div>
+<div class="container mt-5">
+    <h2>Notifications</h2>
 
-    <div id="notifications-section">
-        {% if notifications %}
-            <ul class="notifications-list">
+    {% if notifications %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Type</th>
+                    <th>Content</th>
+                    <th>Sender</th>
+                    <th>Bill</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
                 {% for notification in notifications %}
-                    <li class="notification-item {% if not notification.read %}unread{% endif %}">
-                        <div class="notification-content">
-                            <p><strong>Type:</strong> {{ notification.notif_type }}</p>
-                            <p><strong>Content:</strong> {{ notification.content }}</p>
-                            <p><strong>Sender:</strong>
-                                {% if notification.sender_id %}
-                                    {{ notification.sender.user_name }}
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </p>
-                            <p><strong>Bill:</strong>
-                                {% if notification.bill_id %}
-                                    {{ notification.bill.bill_name }} (ID: {{ notification.bill_id }})
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div class="notification-status">
-                            {% if notification.read %}
-                                <span class="badge-read">Read</span>
-                            {% else %}
-                                <span class="badge-unread">Unread</span>
-                            {% endif %}
-                        </div>
-                    </li>
+                <tr class="{% if not notification.read %}table-warning{% endif %}">
+                    <!-- Notification Type -->
+                    <td>{{ notification.notif_type }}</td>
+
+                    <!-- Notification Content -->
+                    <td>{{ notification.content }}</td>
+
+                    <!-- Sender Info -->
+                    <td>
+                        {% if notification.sender_id %}
+                        {{ notification.sender.user_name }}
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+
+                    <!-- Bill Info -->
+                    <td>
+                        {% if notification.bill_id %}
+                        {{ notification.bill.bill_name }} (ID: {{ notification.bill_id }})
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+
+                    <!-- Read/Unread Status -->
+                    <td>
+                        {% if notification.read %}
+                        <span class="badge bg-success">Read</span>
+                        {% else %}
+                        <span class="badge bg-warning">Unread</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Actions (Delete Button) -->
+                    <td>
+                        <form action="{{ url_for('delete_notification', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Notification" onclick="return confirm('Are you sure you want to delete this notification?');">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
                 {% endfor %}
-            </ul>
-        {% else %}
-            <p>No notifications to display.</p>
-        {% endif %}
+            </tbody>
+        </table>
     </div>
+    {% else %}
+    <p>No notifications to display.</p>
+    {% endif %}
+</div>
 {% endblock %}

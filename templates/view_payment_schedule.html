@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Schedule for {{ bill.bill_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Payment Schedule for {{ bill.bill_name }}</h2>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center">
+            <thead class="thead-dark">
+                <tr>
+                    <th>User</th>
+                    <th>Amount Due</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in ledger_entries %}
+                <tr>
+                    <td>{{ entry.user_id}}</td>
+                    <td>£{{ '%.2f' % entry.amount }}</td>
+                    <td>{{ entry.due_date.strftime('%d %b %Y') }}</td>
+                    <td>
+                        {% if entry.status == 'paid' %}
+                        <span class="badge bg-success">Paid</span>
+                        {% else %}
+                        <span class="badge bg-warning">Owe</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

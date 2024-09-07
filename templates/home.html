@@ -1,499 +1,123 @@
 {% extends "base.html" %}
 
-{% block title %}Student Money Mate{% endblock %}
+{% block title %}Home - Student Money Mate{% endblock %}
 
 {% block content %}
-{% if not flat_groups %}
-<div class="buttons">
-    <button id="createFlatBtn">Create Flat Group</button>
-    <form action="{{ url_for('join_flat') }}" method="POST" style="display: inline;">
-        <input type="text" name="flatGroupId" placeholder="Enter Flat Group ID" required>
-        <button type="submit">Join Flat</button>
-    </form>
-</div>
-{% else %}
-<div class="group-info">
-    {% if group_message %}
-    <p>{{ group_message }}</p>
-    {% else %}
-    <p><strong>Flat Group:</strong> {{ flat_group_names | join(', ') }}</p>
-    {% for group in flat_groups %}
-    <p><strong>FLAT CODE:</strong> {{ group.group_id }}</p>
-    {% endfor %}
-    <p><strong>Manager:</strong> {{ manager_name }}</p>
-    <p><strong>Non-flat Groups:</strong> {{ non_flat_group_names | join(', ') }}</p>
-    {% endif %}
-</div>
-<h2>Flat Bills</h2>
-<div class="bills">
-    {% if flat_bills %}
-    <table>
-    <tr>
-        <th>Bills</th>
-        <th>Total Cost</th>
-        <th>Personal Cost</th>
-        <th>Paid</th>
-        <th>Due Date</th>
-    </tr>
-    {% for bill in flat_bills %}
-    <tr>
-        <td>{{ bill.bill_name }}</td>
-        <td>£{{ bill.amount }}</td>
-        <td>£{{ '%.2f' % bill.personal_cost }}</td>
-        <td>{{ bill.paid }}</td>
-        <td>{% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %}</td>
-    </tr>
-    {% endfor %}
-    </table>
-    {% else %}
-    <p>No flat bills available.</p>
-    {% endif %}
-</div>
-<div class="owed-info">
-    <p><strong>Owed:</strong> £{{ '%.2f' % total_flat_owed }} to {{ manager_name }}</p>
-</div>
-<h2>Non-flat Bills</h2>
-<div class="bills">
-    {% if non_flat_bills %}
-    <table>
-        <tr>
-            <th>Bills</th>
-            <th>Group Members</th>
-            <th>Group Manager</th>
-            <th>Total Cost</th>
-            <th>Your Share</th>
-            <th>Paid</th>
-        </tr>
-        {% for bill in non_flat_bills %}
-        <tr>
-            <td>{{ bill.bill_name }}</td>
-            <td>{{ bill.group_members }}</td>
-            <td>{{ bill.group_manager }}</td>
-            <td>£{{ bill.amount }}</td>
-            <td>£{{ '%.2f' % bill.personal_cost }}</td>
-            <td>{{ bill.paid }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <p>No non-flat bills available.</p>
-    {% endif %}
-</div>
-<div class="owed-info">
-    <h3>Individual Amounts Owed</h3>
-    <table>
-        <tr>
-            <th>Manager</th>
-            <th>Amount Owed</th>
-        </tr>
-        {% for manager, amount in individual_owed.items() %}
-        <tr>
-            <td>{{ manager }}</td>
-            <td>£{{ '%.2f' % amount }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</div>
-<div class="owed-info">
-    <p><strong>Total Owed (Non-flat):</strong> £{{ '%.2f' % total_non_flat_owed }}</p>
-</div>
-<div class="buttons">
-    <button id="makeBillBtn">Make a Bill</button>
-    <button id="makeGroupBtn">Make a Group</button>
-    <button id="showGroupsBtn">Show Groups</button>
-    <button id="paidBillBtn">I have paid Someone</button>
-</div>
-{% endif %}
-</div>
+<div class="container mt-5">
+    <h2>Hello, {{ user.user_name }}!</h2>
+    <p>Welcome back to Student Money Mate.</p>
 
-<!-- Modal for Creating a Flat Group -->
-<div id="createFlatModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <form id="createFlatForm" action="{{ url_for('create_flat') }}" method="POST">
-            <label for="flatGroupName">Flat Group Name:</label>
-            <input type="text" id="flatGroupName" name="flatGroupName" required>
-            <br><br>
-            <button type="submit">Create Flat Group</button>
-        </form>
-    </div>
-</div>
-
-<!-- Modal for Making a Group -->
-<div id="makeGroupModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <form id="makeGroupForm" action="{{ url_for('create_group') }}" method="POST">
-            <label for="splitType">Select Type:</label>
-            <select id="splitType" name="splitType" required>
-                <option value="subgroup">Subgroup</option>
-                <option value="event">Event</option>
-            </select>
-            <span class="tooltip">
-                <i> i </i>
-                <span class="tooltiptext"><b>Subgroup:</b> For a frequently shared expense<br><b>Event:</b> For one-off splits.</span>
-            </span>
-            <br><br>
-            <label for="newGroupName">New Group Name:</label>
-            <input type="text" id="newGroupName" name="newGroupName" required>
-            <br><br>
-            <label>Select Users:</label>
-            <div>
-                <input type="checkbox" name="selectedUsers" value="{{ user.user_id }}" id="alwaysSelectedCheckbox" checked>
-                {{ user.user_name }}
-            </div>
-            {% for member in flat_group_members %}
-            {% if member.user_id != user.user_id %}
-            <div>
-                <input type="checkbox" name="selectedUsers" value="{{ member.user_id }}"> {{ member.user_name }}
-            </div>
+    <!-- Current Amounts Owed Section -->
+    <div class="card mt-5">
+        <div class="card-header bg-danger text-white">
+            Current Amounts Due (within 2 weeks)
+        </div>
+        <div class="card-body">
+            {% if current_bills %}
+                <table class="table table-bordered table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Bill Name</th>
+                            <th>Group Name</th>
+                            <th>Amount Due</th>
+                            <th>Due Date</th>
+                            <th>Pay To</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in current_bills %}
+                        <tr>
+                            <td>{{ bill.bill_name }}</td>
+                            <td>{{ bill.group_name }}</td>
+                            <td>£{{ '%.2f' % bill.amount }}</td>
+                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.creditor_name }}</td>
+                            <td>
+                                <a href="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" class="btn btn-success btn-sm">Pay Bill</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted">You have no current bills due within the next 2 weeks.</p>
             {% endif %}
-            {% endfor %}
-            <br><br>
-            <button type="submit">Create Group</button>
-        </form>
+        </div>
     </div>
-</div>
 
-<!-- Modal for Making a Bill -->
-<div id="makeBillModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <form id="makeBillForm" action="{{ url_for('create_bill') }}" method="POST">
-            <label for="groupSelection">Select Group:</label>
-            <table id="existingGroupsTable">
-                <tr>
-                    <th>Select</th>
-                    <th>Group Name</th>
-                    <th>Group Type</th>
-                    <th>Existing Bills</th>
-                </tr>
-                {% for group in managed_flat_groups + managed_non_flat_groups if group.group_type != 'event' %}
-                <tr>
-                    <td><input type="radio" name="selectedGroup" value="{{ group.group_id }}"></td>
-                    <td>{{ group.group_name }}</td>
-                    <td>{{ group.group_type }}</td>
-                    <td>
-                        <ul>
-                            {% for bill in group.bills %}
-                            <li>{{ bill.bill_name }} (£{{ bill.amount }})</li>
-                            {% endfor %}
-                        </ul>
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
-            <br><br>
-            <label for="billName">Bill Name:</label>
-            <input type="text" id="billName" name="billName" required>
-            <br><br>
-            <label for="billAmount">Bill Amount:</label>
-            <input type="number" id="billAmount" name="billAmount" step="0.5" required min="1.00" max="5000.00">
-            <br><br>
-            <label for="startDate">Start Date:</label>
-            <input type="date" id="startDate" name="startDate">
-            <br><br>
-            <div id="reoccurringOption">
-                <input type="checkbox" id="reoccurring" name="reoccurring">
-                <label for="reoccurring">Re-occurring</label>
-                <br><br>
-                <div id="reoccurringDetails" style="display: none;">
-                    <label for="frequency">Frequency:</label>
-                    <select id="frequency" name="frequency">
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                    <br><br>
-                    <label for="reoccurrences">Re-occurrences:</label>
-                    <input type="number" id="reoccurrences" name="reoccurrences" min="1" max="20">
-                    <br><br>
-                    <div id="customFrequency" style="display: none;">
-                        <label for="customDays">Days:</label>
-                        <input type="number" id="customDays" name="customDays" min="2" max="30">
-                    </div>
-                </div>
-            </div>
-            <br><br>
-            <button type="submit">Create Bill</button>
-        </form>
+    <!-- Upcoming Bills Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-warning">
+            Upcoming Bills (due in the next month)
+        </div>
+        <div class="card-body">
+            {% if upcoming_bills %}
+                <table class="table table-bordered table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Bill Name</th>
+                            <th>Group Name</th>
+                            <th>Amount Due</th>
+                            <th>Due Date</th>
+                            <th>Pay To</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in upcoming_bills %}
+                        <tr>
+                            <td>{{ bill.bill_name }}</td>
+                            <td>{{ bill.group_name }}</td>
+                            <td>£{{ '%.2f' % bill.amount }}</td>
+                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.creditor_name }}</td>
+                            <td>
+                                <a href="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" class="btn btn-success btn-sm">Pay Bill</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted">You have no upcoming bills due within the next month.</p>
+            {% endif %}
+        </div>
     </div>
-</div>
 
-<!-- Modal for Showing Groups -->
-<div id="showGroupsModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Groups Information</h2>
-        <div id="groupDetails">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>NAME</th>
-                        <th>MEMBERS (#)</th>
-                        <th>MANAGER</th>
-                        <th>BILLS (#)</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="groupDetailsBody">
-                </tbody>
-            </table>
+    <!-- Recently Paid Bills Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-success text-white">
+            Recently Paid Bills
+        </div>
+        <div class="card-body">
+            {% if paid_bills %}
+                <table class="table table-bordered table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Bill Name</th>
+                            <th>Group Name</th>
+                            <th>Amount Paid</th>
+                            <th>Paid Date</th>
+                            <th>Paid To</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in paid_bills %}
+                        <tr>
+                            <td>{{ bill.bill_name }}</td>
+                            <td>{{ bill.group_name }}</td>
+                            <td>£{{ '%.2f' % bill.amount }}</td>
+                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.creditor_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted">You have not paid any bills recently.</p>
+            {% endif %}
         </div>
     </div>
 </div>
-
-<!-- Modal for Marking a Bill as Paid -->
-<div id="paidBillModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h3>Select a Bill to Mark as Paid</h3>
-        <form id="paidBillForm" action="{{ url_for('paid_bill') }}" method="POST">
-            <label for="paidBillSelect">Select Bill:</label>
-            <table id="paidBillTable">
-                <tr>
-                    <th>Select</th>
-                    <th>Bill Name</th>
-                    <th>Personal Cost</th>
-                    <th>Due Date</th>
-                </tr>
-                {% if non_flat_bills %}
-                    {% for bill in non_flat_bills %}
-                    <tr>
-                        <td><input type="radio" name="selectedBill" value="{{ bill.bill_id }}" required></td>
-                        <td>{{ bill.bill_name }}</td>
-                        <td>£{{ '%.2f' % bill.personal_cost }}</td>
-                        <td>{% if bill.due_date %}{{ bill.due_date.strftime('%d/%m/%Y') }}{% else %}N/A{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="4" style="text-align:center;">No bills available</td>
-                    </tr>
-                {% endif %}
-            </table>
-            <br><br>
-            <button type="submit" id="markAsPaidBtn">I have paid this</button>
-        </form>
-    </div>
-</div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var reoccurringCheckbox = document.getElementById("reoccurring");
-        var reoccurringDetails = document.getElementById("reoccurringDetails");
-        var customFrequency = document.getElementById("customFrequency");
-        var frequencySelect = document.getElementById("frequency");
-
-        reoccurringCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                reoccurringDetails.style.display = 'block';
-            } else {
-                reoccurringDetails.style.display = 'none';
-                customFrequency.style.display = 'none';
-            }
-        });
-
-        frequencySelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                customFrequency.style.display = 'block';
-            } else {
-                customFrequency.style.display = 'none';
-            }
-        });
-    });
-
-    document.addEventListener("DOMContentLoaded", function() {
-        // Get modal elements
-        var makeBillModal = document.getElementById("makeBillModal");
-        var makeBillBtn = document.getElementById("makeBillBtn");
-        var makeBillSpan = makeBillModal.getElementsByClassName("close")[0];
-
-        var makeGroupModal = document.getElementById("makeGroupModal");
-        var makeGroupBtn = document.getElementById("makeGroupBtn");
-        var makeGroupSpan = makeGroupModal.getElementsByClassName("close")[0];
-
-        var showGroupsModal = document.getElementById("showGroupsModal");
-        var showGroupsBtn = document.getElementById("showGroupsBtn");
-        var showGroupsSpan = showGroupsModal.getElementsByClassName("close")[0];
-
-        var createFlatModal = document.getElementById("createFlatModal");
-        var createFlatBtn = document.getElementById("createFlatBtn");
-        var createFlatSpan = createFlatModal.getElementsByClassName("close")[0];
-
-        var paidBillModal = document.getElementById("paidBillModal");
-        var paidBillBtn = document.getElementById("paidBillBtn");
-        var paidBillSpan = paidBillModal.getElementsByClassName("close")[0];
-
-        // When the user clicks the button, open the modal
-        if (makeBillBtn) {
-            makeBillBtn.onclick = function() {
-                makeBillModal.style.display = "block";
-            }
-        }
-
-        if (makeGroupBtn) {
-            makeGroupBtn.onclick = function() {
-                makeGroupModal.style.display = "block";
-            }
-        }
-
-        if (showGroupsBtn) {
-            showGroupsBtn.onclick = function() {
-                fetch('{{ url_for("group_details") }}')
-                .then(response => response.json())
-                .then(data => {
-                    var groupDetailsBody = document.getElementById("groupDetailsBody");
-                    groupDetailsBody.innerHTML = '';
-                    data.forEach(group => {
-                        var managerTickCross = group.is_manager ? '&#10004;' : '&#10008;';
-                        var memberEmails = group.member_emails.map(email => `<li>${email}</li>`).join('');
-                        var groupInfo = `
-                            <tr>
-                                <td>${group.group_id}</td>
-                                <td>${group.group_name}</td>
-                                <td class="tooltip">${group.members_count}
-                                    <span class="tooltiptext">
-                                        <ul>${memberEmails}</ul>
-                                    </span>
-                                </td>
-                                <td style="text-align:center;">${managerTickCross}</td>
-                                <td>${group.bills_count}</td>
-                                <td></td>
-                            </tr>
-                        `;
-                        groupDetailsBody.innerHTML += groupInfo;
-                    });
-                });
-                showGroupsModal.style.display = "block";
-            }
-        }
-
-        if (createFlatBtn) {
-            createFlatBtn.onclick = function() {
-                createFlatModal.style.display = "block";
-            }
-        }
-
-        if (paidBillBtn) {
-            paidBillBtn.onclick = function() {
-                paidBillModal.style.display = "block";
-            }
-        }
-
-        // When the user clicks on <span> (x), close the modal
-        if (makeBillSpan) {
-            makeBillSpan.onclick = function() {
-                makeBillModal.style.display = "none";
-            }
-        }
-
-        if (makeGroupSpan) {
-            makeGroupSpan.onclick = function() {
-                makeGroupModal.style.display = "none";
-            }
-        }
-
-        if (showGroupsSpan) {
-            showGroupsSpan.onclick = function() {
-                showGroupsModal.style.display = "none";
-            }
-        }
-
-        if (createFlatSpan) {
-            createFlatSpan.onclick = function() {
-                createFlatModal.style.display = "none";
-            }
-        }
-
-        if (paidBillSpan) {
-            paidBillSpan.onclick = function() {
-                paidBillModal.style.display = "none";
-            }
-        }
-
-        // When the user clicks anywhere outside of the modal, close it
-        window.onclick = function(event) {
-            if (event.target == makeBillModal) {
-                makeBillModal.style.display = "none";
-            } else if (event.target == makeGroupModal) {
-                makeGroupModal.style.display = "none";
-            } else if (event.target == showGroupsModal) {
-                showGroupsModal.style.display = "none";
-            } else if (event.target == createFlatModal) {
-                createFlatModal.style.display = "none";
-            } else if (event.target == paidBillModal) {
-                paidBillModal.style.display = "none";
-            }
-        }
-
-        // Ensure the current user's checkbox is always selected
-        const alwaysSelectedCheckbox = document.getElementById('alwaysSelectedCheckbox');
-        alwaysSelectedCheckbox.addEventListener('change', function() {
-            if (!this.checked) {
-                this.checked = true;
-            }
-        });
-
-        // Show flat-only fields if a flat group is selected
-        document.querySelectorAll('input[name="selectedGroup"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                const groupType = this.closest('tr').querySelector('td:nth-child(3)').innerText.trim();
-                if (groupType === 'flat') {
-                    document.getElementById('reoccurringOption').style.display = 'block';
-                } else {
-                    document.getElementById('reoccurringOption').style.display = 'none';
-                    reoccurringCheckbox.checked = false;
-                    reoccurringDetails.style.display = 'none';
-                    customFrequency.style.display = 'none';
-                }
-            });
-        });
-    });
-</script>
-
-<style>
-    .tooltip {
-        position: relative;
-        display: inline-block;
-        cursor: pointer;
-        color: blue;
-    }
-
-    .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 600px;
-        background-color: black;
-        color: #fff;
-        text-align: left;
-        border-radius: 6px;
-        padding: 5px;
-        position: absolute;
-        z-index: 1;
-        bottom: 125%; /* Position the tooltip above the text */
-        left: 50%;
-        margin-left: -110px;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-
-    .tooltip:hover .tooltiptext {
-        visibility: visible;
-        opacity: 1;
-    }
-
-    .tooltip i {
-        border: 1px solid #4c4cc4;
-        border-radius: 50%;
-        padding: 5px;  /* Adjust this value as needed to control the size */
-        font-style: normal;
-        display: inline-block;
-        width: 15px;  /* Ensure width and height are equal */
-        height: 15px; /* Ensure width and height are equal */
-        text-align: center;  /* Center the 'i' character */
-        line-height: 20px;   /* Vertically center the 'i' character */
-    }
-</style>
-
 {% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}I Have Paid Someone{% endblock %}
+
+{% block content %}
+<h2>I Have Paid Someone</h2>
+<form id="paidBillForm" action="{{ url_for('paid_bill') }}" method="POST">
+    <label for="paidBillSelect">Select Bill:</label>
+    <select id="paidBillSelect" name="selectedBill" required>
+        {% for bill in bills %}
+        <option value="{{ bill.bill_id }}">{{ bill.bill_name }} - £{{ bill.personal_cost }} (Due: {{ bill.due_date }})</option>
+        {% endfor %}
+    </select>
+    <br><br>
+    <button type="submit">Mark as Paid</button>
+</form>
+{% endblock %}
