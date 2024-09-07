@@ -7,7 +7,7 @@ db = SQLAlchemy()
 
 class Config(object):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
-                              'postgresql://postgres:postgresql@localhost/StudentMoneyMate'
+                              'postgresql://postgres:postgres@localhost/StudentMoneyMate'
     SQLALCHEMY_TRACK_MODIFICATIONS = True
 
 class Users(db.Model):
