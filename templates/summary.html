@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Student Money Mate - Summary{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Personal Summary</h2>
+
+    <!-- User Information -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title"><strong>{{ user.user_name }}</strong></h5>
+            <p class="card-text">Welcome back! Here’s a summary of your finances.</p>
+        </div>
+    </div>
+
+    <!-- Total and Projected Spend -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Spend</h5>
+                    <p class="card-text">£{{ total_spent | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Projected Spend</h5>
+                    <p class="card-text">£{{ projected_spend | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Outstanding Balance</h5>
+                    <p class="card-text">£{{ outstanding_balance | round(2) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Chart Section -->
+    <div class="chart mb-4">
+        <h4>Spending Overview</h4>
+        <canvas id="spendingChart" style="width: 100%; height: 400px;"></canvas>
+    </div>
+
+
+    <!-- Bills Summary Table -->
+    <div class="table-responsive mb-4">
+        <h4>Bills Summary</h4>
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Bill Name</th>
+                    <th>Personal Cost</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ledger_entry in ledger_entries %}
+                <tr>
+                    <td>{{ ledger_entry.bill_name }}</td>
+                    <td>£{{ ledger_entry.amount | round(2) }}</td>
+                    <td>{{ "Paid" if ledger_entry.status == 'paid' else "Owe" }}</td>
+                    <td>{{ ledger_entry.due_date.strftime('%d/%m/%Y') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Money Owed -->
+    <div class="table-responsive mb-4">
+        <h4>Money Owed</h4>
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Owed To</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for owed in money_owed %}
+                <tr>
+                    <td>{{ owed.creditor_name }}</td>
+                    <td>£{{ owed.amount | round(2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('spendingChart').getContext('2d');
+    const spendingChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ months | tojson }},
+            datasets: [{
+                label: 'Past Spend',
+                data: {{ past_spend | tojson }},
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            }, {
+                label: 'Future Spend',
+                data: {{ future_spend | tojson }},
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Amount (£)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Months'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

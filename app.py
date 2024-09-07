@@ -8,6 +8,7 @@ from uuid import uuid4
 import datetime
 from datetime import datetime, timedelta
 import calendar
+from services.group_services import GroupService
 from collections import defaultdict
 
 # Set up logging
@@ -69,6 +70,8 @@ def login():
             if user and user.password == account_password:
                 logging.info("Logged in")
                 session['user_id'] = user.user_id
+                session['user_name'] = user.user_name
+                session['user_email'] = user.email
 
                 resp = make_response(redirect(url_for('home')))
                 if remember_me:
@@ -124,125 +127,97 @@ def confirmation():
 
 @app.route('/home', methods=['GET'])
 def home():
-    logging.info("Home Page")
     user_id = session.get('user_id')
-    logging.info(f"Session User ID: {user_id}")
     if not user_id:
-        return redirect(url_for('index'))
+        return redirect(url_for('login'))
 
     user = Users.query.get(user_id)
-    logging.info(f"User: {user}")
 
-    flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
-        .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
-    logging.info(f"Flat Groups: {flat_groups}")
+    # Get the current date
+    current_date = datetime.now()
 
-    non_flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
-        .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
-    logging.info(f"Non-flat Groups: {non_flat_groups}")
+    # Calculate date ranges
+    two_weeks_from_now = current_date + timedelta(weeks=2)
+    one_month_from_now = current_date + timedelta(weeks=6)
 
-    manager_name = "N/A"
-    flat_group_names = []
-    flat_bills_data = []
-    total_flat_owed = 0.0
-    if flat_groups:
-        manager = Users.query.get(flat_groups[0].manager_id)
-        manager_name = manager.user_name.replace('_', ' ').title() if manager else "N/A"
-        logging.info(f"Manager Name: {manager_name}")
-
-        flat_group_names = [group.group_name for group in flat_groups]
-
-        # Group bills by name, amount, and group
-        grouped_bills = defaultdict(list)
-        for group in flat_groups:
-            bills = Bills.query.filter_by(group_id=group.group_id).all()
-            group.bills = bills  # Attach bills to the group for template use
-            for bill in bills:
-                grouped_bills[(bill.bill_name, bill.amount, bill.group_id)].append(bill)
-
-        # Process each group of bills to include only the next upcoming and past bills
-        for (bill_name, amount, group_id), bills in grouped_bills.items():
-            bills.sort(key=lambda x: x.start_date)
-            next_bill = None
-            current_date = datetime.now()
-            for bill in bills:
-                if bill.start_date and bill.start_date > current_date:
-                    next_bill = bill
-                    break
-
-            for bill in bills:
-                if next_bill is None or bill.start_date <= next_bill.start_date:
-                    num_members = GroupMembers.query.filter_by(group_id=bill.group_id).count()
-                    personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
-                    total_flat_owed += personal_cost
-                    flat_bills_data.append({
-                        'bill_name': bill.bill_name,
-                        'amount': bill.amount,
-                        'due_date': bill.start_date,
-                        'group_id': bill.group_id,
-                        'personal_cost': personal_cost,
-                        'paid': "No"
-                    })
-
-    non_flat_group_names = [group.group_name for group in non_flat_groups]
-    non_flat_bills_data = []
-    total_non_flat_owed = 0.0
-    individual_owed = {}
-
-    for group in non_flat_groups:
-        bills = Bills.query.filter_by(group_id=group.group_id).all()
-        group.bills = bills  # Attach bills to the group for template use
-        group_manager = Users.query.get(group.manager_id)
-        group_manager_name = group_manager.user_name.replace('_',
-                                                             ' ').title() if group_manager else "N/A"
-        group_members = GroupMembers.query.filter_by(group_id=group.group_id).all()
-        member_names = [Users.query.get(member.user_id).user_name.replace('_', ' ').title() for
-                        member in group_members]
-
-        for bill in bills:
-            logging.info(f"Bill: {bill}")
-            num_members = len(group_members)
-            personal_cost = bill.amount / num_members if num_members > 0 else bill.amount
-            total_non_flat_owed += personal_cost
-
-            if group_manager_name not in individual_owed:
-                individual_owed[group_manager_name] = 0.0
-            individual_owed[group_manager_name] += personal_cost
-
-            non_flat_bills_data.append({
-                'bill_name': bill.bill_name,
-                'amount': bill.amount,
-                'group_manager': group_manager_name,
-                'group_members': ', '.join(member_names),
-                'personal_cost': personal_cost,
-                'paid': "No"
-            })
-
-    flat_group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id) \
-        .filter(GroupMembers.group_id.in_([group.group_id for group in flat_groups])).all()
-    logging.info(f"Flat Group Members: {flat_group_members}")
-
-    other_flat_members = [member for member in flat_group_members if member.user_id != user_id]
-
-    # Get groups where the user is the manager
-    managed_flat_groups = Groups.query.filter_by(manager_id=user_id, group_type='flat').all()
-    managed_non_flat_groups = Groups.query.filter(
-        Groups.manager_id == user_id, Groups.group_type != 'flat'
+    # Fetch the ledger entries for the logged-in user
+    current_bills = Ledger.query.filter(
+        Ledger.user_id == user_id,
+        Ledger.due_date <= two_weeks_from_now,
+        Ledger.status == 'owe'
     ).all()
 
-    return render_template('home.html', user=user, flat_groups=flat_groups,
-                           non_flat_groups=non_flat_groups,
-                           flat_group_members=flat_group_members,
-                           other_flat_members=other_flat_members,
-                           flat_group_names=flat_group_names,
-                           non_flat_group_names=non_flat_group_names,
-                           group_message=None, flat_bills=flat_bills_data,
-                           total_flat_owed=total_flat_owed,
-                           non_flat_bills=non_flat_bills_data,
-                           total_non_flat_owed=total_non_flat_owed,
-                           individual_owed=individual_owed, manager_name=manager_name,
-                           managed_flat_groups=managed_flat_groups,
-                           managed_non_flat_groups=managed_non_flat_groups)
+    upcoming_bills = Ledger.query.filter(
+        Ledger.user_id == user_id,
+        Ledger.due_date > two_weeks_from_now,
+        Ledger.due_date <= one_month_from_now,
+        Ledger.status == 'owe'
+    ).all()
+
+    paid_bills = Ledger.query.filter(
+        Ledger.user_id == user_id,
+        Ledger.status == 'paid'
+    ).order_by(Ledger.due_date.desc()).all()
+
+    return render_template('home.html',
+                           user=user,
+                           current_bills=current_bills,
+                           upcoming_bills=upcoming_bills,
+                           paid_bills=paid_bills)
+
+
+@app.route('/pay_bill/<ledger_id>', methods=['GET'])
+def pay_bill(ledger_id):
+    # Ensure user is logged in
+    user_id = session.get('user_id')
+    if not user_id:
+        flash("Please log in to pay the bill.", "danger")
+        return redirect(url_for('login'))
+
+    # Fetch the ledger entry for the bill
+    ledger_entry = Ledger.query.filter_by(ledger_id=ledger_id, user_id=user_id).first()
+    if not ledger_entry:
+        flash("Bill not found or you don't have permission to pay this bill.", "danger")
+        return redirect(url_for('home'))
+
+    # Check if the bill has already been paid
+    if ledger_entry.status == 'paid':
+        flash("This bill has already been paid.", "warning")
+        return redirect(url_for('home'))
+
+    try:
+        # Mark the bill as paid
+        ledger_entry.status = 'paid'
+        ledger_entry.updated_at = db.func.current_timestamp()  # Update the timestamp
+
+        # Notify the creditor that the bill has been paid
+        creditor_id = ledger_entry.creditor_id
+        creditor = Users.query.get(creditor_id)
+
+        # Create a new notification for the creditor
+        if creditor:
+            notification_message = f"The bill '{ledger_entry.bill_name}' for group '{ledger_entry.group_name}' has been paid by {ledger_entry.user_name}."
+            new_notification = Notifications(
+                user_id=creditor_id,
+                sender_id=user_id,
+                bill_id=ledger_entry.bill_id,
+                notif_type="payment",
+                content=notification_message,
+                read=False
+            )
+            db.session.add(new_notification)
+
+        # Commit the changes to the database
+        db.session.commit()
+        flash("Bill paid successfully and the creditor has been notified.", "success")
+
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of any error
+        flash(f"An error occurred while paying the bill: {str(e)}", "danger")
+
+    return redirect(url_for('home'))
+
+
 
 @app.route('/create_group', methods=['POST'])
 def create_group():
@@ -252,7 +227,6 @@ def create_group():
     user_id = session['user_id']
     group_name = request.form.get('newGroupName')
     split_type = request.form.get('splitType')
-    selected_users = request.form.getlist('selectedUsers')
 
     try:
         new_group_id = generate_hex_id('group')
@@ -260,9 +234,9 @@ def create_group():
         db.session.add(group)
         db.session.commit()
 
-        for selected_user_id in selected_users:
-            group_member = GroupMembers(group_id=new_group_id, user_id=selected_user_id)
-            db.session.add(group_member)
+
+        group_member = GroupMembers(group_id=new_group_id, user_id=user_id)
+        db.session.add(group_member)
 
         db.session.commit()
 
@@ -274,92 +248,333 @@ def create_group():
 
     return redirect(url_for('home'))
 
+@app.route('/get_group_members/<group_id>', methods=['GET'])
+def get_group_members(group_id):
+    group_members = GroupMembers.query.filter_by(group_id=group_id).all()
+    members_data = [
+        {"user_name": member.user.user_name, "email": member.user.email} for member in group_members
+    ]
+    return jsonify(members=members_data)
+
 @app.route('/create_bill', methods=['POST'])
-def create_bill():
-    if 'user_id' not in session:
-        return redirect(url_for('index'))
+def save_bill():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    group_id = request.form.get('selectedGroup')
-    bill_name = request.form.get('billName')
-    bill_amount_str = request.form.get('billAmount')
-    start_date_str = request.form.get('startDate', None)
-    reoccurring = request.form.get('reoccurring') == 'on'
-    frequency = request.form.get('frequency', None)
-    reoccurrences_str = request.form.get('reoccurrences', '0')
-    custom_days_str = request.form.get('customDays', '0')
+    bill_id  = generate_hex_id('bill')
+    bill_name = request.form.get('bill_name')
+    bill_type = request.form.get('bill_type')
+    amount = request.form.get('amount')
+    group_id = request.form.get('group_id')
+    start_date = request.form.get('start_date') if bill_type == 'recurring' else None
+    frequency = request.form.get('frequency') if bill_type == 'recurring' else None
+    end_date = request.form.get('end_date') if bill_type == 'recurring' else None
+
+    # Create the bill in the database
+    new_bill = Bills(
+        bill_id=bill_id,
+        bill_name=bill_name,
+        group_id=group_id,
+        bill_type=bill_type,
+        amount=amount,
+        start_date=start_date,
+        frequency=frequency,
+        end_date=end_date,
+        created_by=user_id,
+        status='New',
+    )
+    db.session.add(new_bill)
+    db.session.commit()
+
+    flash(f"Bill '{bill_name}' has been created successfully.", "success")
+    return redirect(url_for('home'))
+
+@app.route('/my_bills', methods=['GET'])
+def my_bills():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # Fetch the bills created by the user
+    created_bills = Bills.query.filter_by(created_by=user_id).all()
+
+    return render_template('my_bills.html', created_bills=created_bills)
+
+@app.route('/edit_bill/<bill_id>', methods=['GET', 'POST'])
+def edit_bill(bill_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # Fetch the bill by its ID and ensure the user is the creator
+    bill = Bills.query.filter_by(bill_id=bill_id, created_by=user_id).first()
+
+    if not bill:
+        flash("Bill not found or you don't have permission to edit this bill.", "danger")
+        return redirect(url_for('my_bills'))
+
+    if request.method == 'POST':
+        try:
+            # Update bill details based on form submission
+            bill.bill_name = request.form.get('bill_name')
+            bill.amount = float(request.form.get('amount'))
+            bill.bill_type = request.form.get('bill_type')
+
+            # Update recurring details if it's a recurring bill
+            if bill.bill_type == 'recurring':
+                bill.start_date = request.form.get('start_date')
+                bill.frequency = request.form.get('frequency')
+                bill.end_date = request.form.get('end_date')
+
+            db.session.commit()
+            flash("Bill updated successfully.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred while updating the bill: {str(e)}", "danger")
+
+        return redirect(url_for('my_bills'))
+
+    # For GET request, render the form with existing bill details
+    return render_template('edit_bill.html', bill=bill)
+
+@app.route('/delete_bill/<bill_id>', methods=['POST'])
+def delete_bill(bill_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # Fetch the bill by its ID and ensure the user is the creator
+    bill = Bills.query.filter_by(bill_id=bill_id, created_by=user_id).first()
+
+    if not bill:
+        flash("Bill not found or you don't have permission to delete this bill.", "danger")
+        return redirect(url_for('my_bills'))
 
     try:
-        bill_amount = float(bill_amount_str)
-    except ValueError:
-        flash('Invalid bill amount', 'error')
-        return redirect(url_for('home'))
+        # Delete associated ledger entries
+        Ledger.query.filter_by(bill_id=bill.bill_id).delete()
+
+        # Delete the bill itself
+        db.session.delete(bill)
+        db.session.commit()
+
+        flash("Bill deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while deleting the bill: {str(e)}", "danger")
+
+    return redirect(url_for('my_bills'))
+
+
+@app.route('/generate_payment_schedule/<bill_id>', methods=['POST'])
+def generate_payment_schedule(bill_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    creditor_id = user_id
+    creditor_name = session.get('user_name')
+
+    # Fetch the bill and check if the user is the creator
+    bill = Bills.query.filter_by(bill_id=bill_id, created_by=user_id).first()
+    if not bill:
+        flash("Bill not found or you don't have permission to generate payment schedule for this bill.", "danger")
+        return redirect(url_for('my_bills'))
+
+    if bill.status == 'Active':
+        flash("Bill already has a payment schedule.", "danger")
+        return redirect(url_for('my_bills'))
+
+    # Fetch the group members
+    group_members = GroupMembers.query.filter_by(group_id=bill.group_id).all()
+
+    if not group_members:
+        flash("No members found in the group.", "danger")
+        return redirect(url_for('my_bills'))
 
     try:
-        reoccurrences = int(reoccurrences_str)
-    except ValueError:
-        reoccurrences = 0
+        # Check if the payment schedule already exists
+        ledger_entries = Ledger.query.filter_by(bill_id=bill_id).all()
+        if ledger_entries:
+            flash("Payment schedule already generated.", "warning")
+            return redirect(url_for('my_bills'))
 
-    try:
-        custom_days = int(custom_days_str)
-    except ValueError:
-        custom_days = 0
+        # Calculate the individual payment amount
+        num_members = len(group_members)
+        individual_amount = bill.amount / num_members
 
-    try:
-        group = Groups.query.get(group_id)
-        if not group:
-            flash('Group not found', 'error')
-            return redirect(url_for('home'))
+        if bill.bill_type == 'recurring':
 
-        # Convert start_date_str to a datetime object
-        if start_date_str:
-            try:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-            except ValueError:
-                flash('Invalid start date format. Use YYYY-MM-DD.', 'error')
-                return redirect(url_for('home'))
-        else:
-            start_date = None
+            # Set the recurrence pattern
+            current_date = bill.start_date
+            end_date = bill.end_date
+            recurrence_frequency = bill.frequency  # Can be 'monthly', 'weekly', or 'yearly'
 
-        # Add the initial bill
-        bill_id = generate_hex_id('bill')
-        bill = Bills(bill_id=bill_id, bill_name=bill_name, group_id=group.group_id, amount=bill_amount, start_date=start_date)
-        db.session.add(bill)
-
-        # Handle recurring bills
-        if reoccurring:
-            for i in range(1, reoccurrences + 1):
-                if frequency == 'weekly':
-                    next_date = start_date + timedelta(weeks=i)
-                elif frequency == 'monthly':
-                    month = start_date.month - 1 + i
-                    year = start_date.year + month // 12
-                    month = month % 12 + 1
-                    day = min(start_date.day, calendar.monthrange(year, month)[1])
-                    next_date = datetime(year=year, month=month, day=day)
-                elif frequency == 'custom':
-                    next_date = start_date + timedelta(days=custom_days * i)
+            # Helper function to increment date based on the frequency
+            def increment_date(date, frequency):
+                if frequency == 'monthly':
+                    return date + timedelta(days=30)  # Approximation for monthly
+                elif frequency == 'weekly':
+                    return date + timedelta(weeks=1)
+                elif frequency == 'yearly':
+                    return date + timedelta(days=365)
                 else:
-                    continue
+                    return date  # One-off payment
 
-                bill_id = generate_hex_id('bill')
-                bill = Bills(bill_id=bill_id, bill_name=bill_name, group_id=group.group_id, amount=bill_amount, start_date=next_date)
-                db.session.add(bill)
+            group = Groups.query.filter_by(group_id=bill.group_id).first()
+
+            # Generate the ledger entries for each recurrence period
+            while current_date <= end_date:
+                for member in group_members:
+                    ledger_id = generate_hex_id('post')
+
+                    user = Users.query.filter_by(user_id=member.user_id).first()
+
+                    new_ledger_entry = Ledger(
+                        ledger_id=ledger_id,
+                        bill_id=bill.bill_id,
+                        bill_name=bill.bill_name,
+                        user_id=member.user_id,
+                        user_name=user.user_name,
+                        group_id=group.group_id,
+                        group_name=group.group_name,
+                        creditor_id=creditor_id,
+                        creditor_name=creditor_name,
+                        amount=individual_amount,
+                        status='owe',  # Initial status is 'owe'
+                        due_date=current_date  # Set due date for this recurrence
+                    )
+                    db.session.add(new_ledger_entry)
+
+                # Increment the current date for the next recurrence
+                current_date = increment_date(current_date, recurrence_frequency)
+
+        else:
+
+            group = Groups.query.filter_by(group_id=bill.group_id).first()
+
+            due_date = datetime.today().date() + timedelta(days=7)
+
+            for member in group_members:
+                ledger_id = generate_hex_id('post')
+
+                user = Users.query.filter_by(user_id=member.user_id).first()
+
+                new_ledger_entry = Ledger(
+                    ledger_id=ledger_id,
+                    bill_id=bill.bill_id,
+                    bill_name=bill.bill_name,
+                    user_id=member.user_id,
+                    user_name=user.user_name,
+                    group_id=group.group_id,
+                    group_name=group.group_name,
+                    creditor_id=creditor_id,
+                    creditor_name=creditor_name,
+                    amount=individual_amount,
+                    status='owe',  # Initial status is 'owe'
+                    due_date=due_date  # SSet this for 7 days in the future
+                )
+                db.session.add(new_ledger_entry)
+
+        # Mark the bill status as Active
+        bill.status = 'Active'
 
         db.session.commit()
 
-        flash('Bill created successfully!', 'success')
-
+        flash("Payment schedule generated successfully, and the bill is now Active.", "success")
     except Exception as e:
         db.session.rollback()
-        flash(f'Error creating bill: {str(e)}', 'error')
+        flash(f"An error occurred while generating the payment schedule: {str(e)}", "danger")
 
-    return redirect(url_for('home'))
+    return redirect(url_for('my_bills'))
 
-@app.route('/individual', methods=['GET'])
-def individual():
-    logging.info("Individual Page")
-    return render_template('individual.html')
+
+@app.route('/view_payment_schedule/<bill_id>', methods=['GET'])
+def view_payment_schedule(bill_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # Fetch the bill and check if the user is the creator
+    bill = Bills.query.filter_by(bill_id=bill_id, created_by=user_id).first()
+    if not bill:
+        flash("Bill not found or you don't have permission to view this payment schedule.", "danger")
+        return redirect(url_for('my_bills'))
+
+    # Fetch the payment schedule from the ledger
+    ledger_entries = Ledger.query.filter_by(bill_id=bill_id).all()
+
+    if not ledger_entries:
+        flash("No payment schedule found for this bill.", "danger")
+        return redirect(url_for('my_bills'))
+
+    return render_template('view_payment_schedule.html', bill=bill, ledger_entries=ledger_entries)
+
+
+
+@app.route('/create_bill', methods=['GET'])
+def create_bill():
+    # Check if the user is logged in
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    # Fetch the groups the user is a member of
+    user_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+        .filter(GroupMembers.user_id == user_id).all()
+
+    # Render the create_bill.html page and pass the groups to the template
+    return render_template('create_bill.html', user_groups=user_groups)
+
+
+
+@app.route('/summary')
+def summary():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    user = Users.query.get(user_id)
+
+    # Fetch all ledger entries for this user
+    ledger_entries = Ledger.query.filter_by(user_id=user_id).all()
+
+    # Calculate total spent and outstanding balance
+    total_spent = sum(entry.amount for entry in ledger_entries if entry.status == 'paid')
+    outstanding_balance = sum(entry.amount for entry in ledger_entries if entry.status == 'owe')
+    projected_spend = outstanding_balance + total_spent  # Could be adjusted for future bills
+
+    # For chart: break down spend by month (past spend and future spend)
+    months = []
+    past_spend = []
+    future_spend = []
+
+    # Group entries by due date and amount
+    now = datetime.now()
+    for entry in ledger_entries:
+        month_name = entry.due_date.strftime('%B')
+        if month_name not in months:
+            months.append(month_name)
+        if entry.due_date < now:
+            past_spend.append(entry.amount)
+        else:
+            future_spend.append(entry.amount)
+
+    # Fetch money owed to creditors (you owe)
+    money_owed = Ledger.query.filter_by(user_id=user_id, status='owe').all()
+
+    return render_template('summary.html', user=user,
+                           total_spent=total_spent,
+                           outstanding_balance=outstanding_balance,
+                           projected_spend=projected_spend,
+                           ledger_entries=ledger_entries,
+                           months=months,
+                           past_spend=past_spend,
+                           future_spend=future_spend,
+                           money_owed=money_owed)
+
+
 
 @app.route('/account', methods=['GET'])
 def account():
@@ -520,49 +735,184 @@ def paid_bill():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@app.route('/group_details', methods=['GET'])
-def group_details():
-    if 'user_id' not in session:
-        return jsonify({"error": "Unauthorized access"}), 401
+
+
+@app.route('/show_groups')
+def show_groups():
 
     user_id = session['user_id']
+
     try:
-        flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
-            .filter(GroupMembers.user_id == user_id, Groups.group_type == 'flat').all()
 
-        non_flat_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
-            .filter(GroupMembers.user_id == user_id, Groups.group_type != 'flat').all()
-
-        all_groups = flat_groups + non_flat_groups
-
-        group_info = []
-        for group in all_groups:
-            group_manager = Users.query.get(group.manager_id)
-            is_manager = group.manager_id == user_id
-            members_count = GroupMembers.query.filter_by(group_id=group.group_id).count()
-            bills = Bills.query.filter_by(group_id=group.group_id).all()
-
-            bill_details = [
-                {
-                    'bill_name': bill.bill_name,
-                    'amount': bill.amount,
-                    'start_date': bill.start_date.strftime('%Y-%m-%d') if bill.start_date else 'N/A'
-                } for bill in bills
-            ]
-
-            group_info.append({
-                'group_name': group.group_name,
-                'group_type': group.group_type,
-                'manager_name': group_manager.user_name if group_manager else 'N/A',
-                'is_manager': is_manager,
-                'members_count': members_count,
-                'bills': bill_details
-            })
-
-        return jsonify(group_info)
+        groups_data = GroupService.get_group_details(user_id)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+    return render_template('show_groups.html', groups=groups_data)  # Pass relevant data
+
+@app.route('/creat_new_group')
+def create_new_group():
+    return render_template('create_group.html')  # Pass relevant data
+
+@app.route('/delete_group/<group_id>', methods=['POST'])
+def delete_group(group_id):
+    """
+    Deletes a group if the current user is the manager.
+    """
+    user_id = session.get('user_id')
+
+    if not user_id:
+        flash("You need to be logged in to delete a group.", "danger")
+        return redirect(url_for('home'))
+
+    # Fetch the group by group_id
+    group = Groups.query.filter_by(group_id=group_id).first()
+
+    if not group:
+        flash("Group not found.", "danger")
+        return redirect(url_for('home'))
+
+    # Check if the user is the group manager
+    if group.manager_id != user_id:
+        flash("You are not authorized to delete this group.", "danger")
+        return redirect(url_for('home'))
+
+    try:
+        # Delete related data (e.g., group members, bills)
+        GroupMembers.query.filter_by(group_id=group_id).delete()
+        Bills.query.filter_by(group_id=group_id).delete()
+
+        # Delete the group itself
+        db.session.delete(group)
+        db.session.commit()
+
+        flash("Group deleted successfully.", "success")
+        return redirect(url_for('home'))
+
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of an error
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('home'))
+
+@app.route('/edit_group/<group_id>', methods=['GET'])
+def edit_group(group_id):
+    """
+    Edit group details and manage members.
+    """
+    user_id = session.get('user_id')
+
+    if not user_id:
+        flash("You need to be logged in to edit a group.", "danger")
+        return redirect(url_for('home'))
+
+    group = Groups.query.filter_by(group_id=group_id).first()
+
+    if not group or group.manager_id != user_id:
+        flash("You are not authorized to edit this group.", "danger")
+        return redirect(url_for('home'))
+
+
+        return redirect(url_for('show_groups', group_id=group_id))
+
+    # Fetch group members for the GET request
+    group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id).filter(GroupMembers.group_id == group_id).all()
+
+    return render_template('edit_group.html', group=group, group_members=group_members)
+
+@app.route('/delete_notification/<int:notif_id>', methods=['POST'])
+def delete_notification(notif_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    notification = Notifications.query.get_or_404(notif_id)
+
+    if notification.user_id != session['user_id']:
+        flash("You are not authorized to delete this notification.", "danger")
+        return redirect(url_for('notifications'))
+
+    db.session.delete(notification)
+    db.session.commit()
+
+    flash("Notification deleted successfully.", "success")
+    return redirect(url_for('notifications'))
+
+
+@app.route('/invite_members/<group_id>', methods=['POST'])
+def invite_members(group_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    invite_emails = request.form.get('invite_emails')
+
+    # Split the emails by commas and clean up the list
+    email_list = [email.strip() for email in invite_emails.split(',') if email.strip()]
+
+    # Get the group from the database
+    group = Groups.query.get(group_id)
+
+    for email in email_list:
+        # Check if the user exists in the system
+        invited_user = Users.query.filter_by(email=email).first()
+
+        if invited_user:
+            # Check if the user is already a member of the group
+            existing_member = GroupMembers.query.filter_by(user_id=invited_user.user_id, group_id=group_id).first()
+
+            if existing_member:
+                flash(f"{email} is already a member of the group.", "warning")
+            else:
+                # Add the user to the group
+                new_member = GroupMembers(user_id=invited_user.user_id, group_id=group_id)
+                db.session.add(new_member)
+
+                # Send a notification to the user
+                notification_message = f"You have been invited to join the group '{group.group_name}'."
+                new_notification = Notifications(
+                    user_id=invited_user.user_id,
+                    sender_id=session['user_id'],  # Assuming the current user is the sender
+                    notif_type='group_invite',
+                    content=notification_message,
+                    read=False
+                )
+                db.session.add(new_notification)
+
+                flash(f"Invitation sent to {email}.", "success")
+
+        else:
+            # Handle the case where the email does not exist in the system
+            flash(f"{email} does not exist in the system. Sending a notification email (stub for now).", "info")
+            # Here you can integrate email sending logic later as a stub
+            # send_email_stub(email, group.group_name)
+
+    db.session.commit()
+    return redirect(url_for('edit_group', group_id=group_id))
+
+
+@app.route('/remove_member/<group_id>/<member_id>', methods=['POST'])
+def remove_member(group_id, member_id):
+    """
+    Remove a user from a group (only by group manager).
+    """
+    user_id = session.get('user_id')
+
+    if not user_id:
+        flash("You need to be logged in to remove a member.", "danger")
+        return redirect(url_for('home'))
+
+    group = Groups.query.filter_by(group_id=group_id).first()
+
+    if not group or group.manager_id != user_id:
+        flash("You are not authorized to remove members from this group.", "danger")
+        return redirect(url_for('edit_group', group_id=group_id))
+
+    # Remove the member from the group
+    GroupMembers.query.filter_by(user_id=member_id, group_id=group_id).delete()
+    db.session.commit()
+
+    flash("Member removed successfully.", "success")
+    return redirect(url_for('edit_group', group_id=group_id))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

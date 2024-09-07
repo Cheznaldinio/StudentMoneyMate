@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Group{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Edit Group</h2>
+
+    <!-- Group Details (Uneditable) -->
+    <form>
+        <div class="mb-3">
+            <label for="groupName" class="form-label">Group Name</label>
+            <input type="text" class="form-control" id="groupName" name="group_name" value="{{ group.group_name }}" disabled>
+        </div>
+
+        <div class="mb-3">
+            <label for="groupType" class="form-label">Group Type</label>
+            <input type="text" class="form-control" id="groupType" name="group_type" value="{{ group.group_type | capitalize }}" disabled>
+        </div>
+    </form>
+
+    <!-- Group Members List -->
+    <h4>Members</h4>
+    <ul class="list-group mb-3">
+        {% for member in group_members %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ member.user_name }} ({{ member.email }})
+            <!-- Remove User Button (Separate Form) -->
+            <form action="{{ url_for('remove_member', group_id=group.group_id, member_id=member.user_id) }}" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Invite New Members -->
+    <h4>Invite New Members</h4>
+    <form action="{{ url_for('invite_members', group_id=group.group_id) }}" method="POST">
+        <div class="mb-3">
+            <label for="inviteEmails" class="form-label">Email Addresses</label>
+            <input type="text" class="form-control" id="inviteEmails" name="invite_emails" placeholder="Enter email addresses, comma-separated" required>
+            <div class="invalid-feedback">Please provide at least one valid email address.</div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Invite Members</button>
+    </form>
+</div>
+
+<!-- Simplified Script Block -->
+<script>
+    // You can add custom validation here if needed, but basic HTML5 validation should handle it
+</script>
+{% endblock %}
