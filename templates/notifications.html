@@ -6,7 +6,7 @@
 <div class="container mt-5">
     <h2>Notifications</h2>
 
-    {% if notifications %}
+    {% if notification_data %}
     <div class="table-responsive">
         <table class="table table-bordered table-striped text-center">
             <thead class="thead-dark">
@@ -20,7 +20,9 @@
                 </tr>
             </thead>
             <tbody>
-                {% for notification in notifications %}
+                {% for data in notification_data %}
+                {% set notification = data.notification %}
+                {% set ledger_entry = data.ledger_entry %}
                 <tr class="{% if not notification.read %}table-warning{% endif %}">
                     <!-- Notification Type -->
                     <td>{{ notification.notif_type }}</td>
@@ -55,13 +57,22 @@
                         {% endif %}
                     </td>
 
-                    <!-- Actions (Delete Button) -->
+                    <!-- Actions (Confirm/Deny for payment confirmations) -->
                     <td>
-                        <form action="{{ url_for('delete_notification', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
-                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Notification" onclick="return confirm('Are you sure you want to delete this notification?');">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                        {% if notification.notif_type == 'payment_confirmation_request' and not notification.read %}
+                        <!-- Confirm/Deny buttons for payment confirmation -->
+                        <form action="{{ url_for('confirm_payment', notif_id=notification.notif_id, ledger_id=ledger_entry.ledger_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-sm">Confirm</button>
                         </form>
+                        <form action="{{ url_for('deny_payment', notif_id=notification.notif_id, ledger_id=ledger_entry.ledger_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Deny</button>
+                        </form>
+                        {% elif not notification.read %}
+                        <!-- Mark as read button for other notifications -->
+                        <form action="{{ url_for('mark_as_read', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-secondary btn-sm">Mark as Read</button>
+                        </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

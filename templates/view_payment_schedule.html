@@ -18,12 +18,14 @@
             <tbody>
                 {% for entry in ledger_entries %}
                 <tr>
-                    <td>{{ entry.user_id}}</td>
+                    <td>{{ entry.user_id }}</td>
                     <td>£{{ '%.2f' % entry.amount }}</td>
                     <td>{{ entry.due_date.strftime('%d %b %Y') }}</td>
                     <td>
                         {% if entry.status == 'paid' %}
                         <span class="badge bg-success">Paid</span>
+                        {% elif entry.status == 'confirming' %}
+                        <span class="badge bg-info">Confirming</span>
                         {% else %}
                         <span class="badge bg-warning">Owe</span>
                         {% endif %}

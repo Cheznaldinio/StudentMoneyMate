@@ -181,10 +181,135 @@ def home():
                            future_bills=future_bills,
                            all_future_bills=all_future_bills)
 
+@app.route('/confirm_payment/<notif_id>/<ledger_id>', methods=['POST'])
+def confirm_payment(notif_id, ledger_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        logging.error("User not logged in")
+        return redirect(url_for('login'))
+
+    # Log the received IDs
+    logging.info(f"Confirm Payment called with notif_id: {notif_id}, ledger_id: {ledger_id}")
+
+    # Fetch the notification using the notif_id
+    notification = Notifications.query.get(notif_id)
+    if not notification:
+        logging.error(f"Notification not found for notif_id: {notif_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    # Fetch the ledger entry for the corresponding bill_id that is in confirming status
+    ledger_entry = Ledger.query.filter_by(bill_id=notification.bill_id, status='confirming').first()
+
+    # Log the existence of ledger entry
+    if not ledger_entry:
+        logging.error(f"Ledger entry not found with status 'confirming' for bill_id: {notification.bill_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    try:
+        # Log before updating the ledger entry
+        logging.info(f"Marking ledger_id: {ledger_entry.ledger_id} as paid")
+
+        # Mark the bill as paid
+        ledger_entry.status = 'paid'
+        ledger_entry.paid_date = datetime.now()
+        db.session.commit()
+
+        # Notify the payer that the payment was confirmed
+        payer = Users.query.get(ledger_entry.user_id)
+        logging.info(f"Sending confirmation notification to user_id: {ledger_entry.user_id} for bill '{ledger_entry.bill_name}'")
+
+        notification_message = f"{session['user_name']} has confirmed your payment for the bill '{ledger_entry.bill_name}'."
+        new_notification = Notifications(
+            user_id=ledger_entry.user_id,  # Notify the original payer
+            sender_id=user_id,  # Bill creator
+            bill_id=ledger_entry.bill_id,
+            notif_type="payment_confirmation",
+            content=notification_message,
+            read=False
+        )
+        db.session.add(new_notification)
+
+        # Mark the original notification as read
+        notification.read = True
+        db.session.commit()
+
+        logging.info(f"Payment confirmation completed for ledger_id: {ledger_entry.ledger_id}")
+
+        flash("Payment confirmed successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"An error occurred while confirming the payment: {str(e)}")
+        flash(f"An error occurred while confirming the payment: {str(e)}", "danger")
+
+    return redirect(url_for('notifications'))
+
+@app.route('/deny_payment/<notif_id>/<ledger_id>', methods=['POST'])
+def deny_payment(notif_id, ledger_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        logging.error("User not logged in")
+        return redirect(url_for('login'))
+
+    # Log the received IDs
+    logging.info(f"Deny Payment called with notif_id: {notif_id}, ledger_id: {ledger_id}")
+
+    # Fetch the notification using the notif_id
+    notification = Notifications.query.get(notif_id)
+    if not notification:
+        logging.error(f"Notification not found for notif_id: {notif_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    # Fetch the ledger entry for the corresponding bill_id that is in confirming status
+    ledger_entry = Ledger.query.filter_by(bill_id=notification.bill_id, status='confirming').first()
+
+    # Log the existence of ledger entry
+    if not ledger_entry:
+        logging.error(f"Ledger entry not found with status 'confirming' for bill_id: {notification.bill_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    try:
+        # Log before updating the ledger entry
+        logging.info(f"Reverting ledger_id: {ledger_entry.ledger_id} status to 'owe'")
+
+        # Revert the bill status to 'owe'
+        ledger_entry.status = 'owe'
+        db.session.commit()
+
+        # Notify the payer that the payment was denied
+        payer = Users.query.get(ledger_entry.user_id)
+        logging.info(f"Sending denial notification to user_id: {ledger_entry.user_id} for bill '{ledger_entry.bill_name}'")
+
+        notification_message = f"{session['user_name']} has denied your payment for the bill '{ledger_entry.bill_name}'."
+        new_notification = Notifications(
+            user_id=ledger_entry.user_id,  # Notify the original payer
+            sender_id=user_id,  # Bill creator
+            bill_id=ledger_entry.bill_id,
+            notif_type="payment_denied",
+            content=notification_message,
+            read=False
+        )
+        db.session.add(new_notification)
+
+        # Mark the original notification as read
+        notification.read = True
+        db.session.commit()
+
+        logging.info(f"Payment denial completed for ledger_id: {ledger_entry.ledger_id}")
+
+        flash("Payment denied successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"An error occurred while denying the payment: {str(e)}")
+        flash(f"An error occurred while denying the payment: {str(e)}", "danger")
+
+    return redirect(url_for('notifications'))
 
 @app.route('/pay_bill/<ledger_id>', methods=['POST'])
 def pay_bill(ledger_id):
-    # Ensure user is logged in
     user_id = session.get('user_id')
     if not user_id:
         flash("Please log in to pay the bill.", "danger")
@@ -196,42 +321,62 @@ def pay_bill(ledger_id):
         flash("Bill not found or you don't have permission to pay this bill.", "danger")
         return redirect(url_for('home'))
 
-    # Check if the bill has already been paid
-    if ledger_entry.status == 'paid':
-        flash("This bill has already been paid.", "warning")
+    # Ensure the bill is not already in confirming or paid state
+    if ledger_entry.status in ['confirming', 'paid']:
+        flash("This bill is already in confirming or paid status.", "warning")
         return redirect(url_for('home'))
 
     try:
-        # Mark the bill as paid and set the current timestamp for paid_date
-        ledger_entry.status = 'paid'
-        ledger_entry.paid_date = datetime.now()
-        ledger_entry.updated_at = db.func.current_timestamp()  # Update the timestamp
+        # Mark the bill status as 'confirming'
+        ledger_entry.status = 'confirming'
+        ledger_entry.updated_at = datetime.now()
 
-        # Notify the creditor that the bill has been paid
-        creditor_id = ledger_entry.creditor_id
-        creditor = Users.query.get(creditor_id)
+        # Fetch the bill and creator
+        bill = Bills.query.get(ledger_entry.bill_id)
+        creator = Users.query.get(bill.created_by)
 
-        # Create a new notification for the creditor
-        if creditor:
-            notification_message = f"The bill '{ledger_entry.bill_name}' for group '{ledger_entry.group_name}' has been paid by {ledger_entry.user_name}."
-            new_notification = Notifications(
-                user_id=creditor_id,
-                sender_id=user_id,
-                bill_id=ledger_entry.bill_id,
-                notif_type="payment",
-                content=notification_message,
-                read=False
-            )
-            db.session.add(new_notification)
-        # Commit the changes to the database
+        # Notify the bill creator that the payment is in confirming state
+        notification_message = f"{session['user_name']} has claimed to pay the bill '{bill.bill_name}'. Please confirm or deny the payment."
+        new_notification = Notifications(
+            user_id=bill.created_by,  # Notify the bill creator
+            sender_id=user_id,  # User who claimed to pay
+            bill_id=bill.bill_id,
+            notif_type="payment_confirmation_request",
+            content=notification_message,
+            read=False
+        )
+        db.session.add(new_notification)
         db.session.commit()
 
-        flash("Bill paid successfully.", "success")
+        flash("Payment claimed, waiting for confirmation from the bill creator.", "success")
     except Exception as e:
-        db.session.rollback()  # Rollback in case of any error
-        flash(f"An error occurred while paying the bill: {str(e)}", "danger")
+        db.session.rollback()
+        flash(f"An error occurred while claiming the bill: {str(e)}", "danger")
 
     return redirect(url_for('home'))
+
+
+@app.route('/mark_as_read/<notif_id>', methods=['POST'])
+def mark_as_read(notif_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    notification = Notifications.query.get(notif_id)
+    if not notification or notification.user_id != user_id:
+        flash("Notification not found or unauthorized action.", "danger")
+        return redirect(url_for('notifications'))
+
+    try:
+        notification.read = True
+        db.session.commit()
+        flash("Notification marked as read.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while marking the notification as read: {str(e)}", "danger")
+
+    return redirect(url_for('notifications'))
+
 
 @app.route('/create_group', methods=['POST'])
 def create_group():
@@ -714,14 +859,31 @@ def logout():
 def notifications():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('index'))
+        return redirect(url_for('login'))
 
-    # Retrieve the user and their notifications
+    # Fetch the current user
     user = Users.query.get(user_id)
-    notifications = Notifications.query.filter_by(user_id=user_id).all()
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('login'))
 
-    # Render the template with the user's data and their notifications
-    return render_template('notifications.html', user=user, notifications=notifications)
+    # Fetch all notifications for the current user
+    notifications = Notifications.query.filter_by(user_id=user_id).order_by(Notifications.read.asc(), Notifications.notif_id.desc()).all()
+
+    # Fetch the corresponding ledger entries for each notification
+    notification_data = []
+    for notification in notifications:
+        # Get the corresponding ledger entry
+        ledger_entry = Ledger.query.filter_by(bill_id=notification.bill_id).first()
+        notification_data.append({
+            'notification': notification,
+            'ledger_entry': ledger_entry  # Add the ledger entry
+        })
+
+    # Pass data to the template
+    return render_template('notifications.html', user=user, notification_data=notification_data)
+
+
 
 @app.route('/paid_bill', methods=['POST'])
 def paid_bill():
