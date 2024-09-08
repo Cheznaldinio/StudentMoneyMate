@@ -34,7 +34,9 @@
                             <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
                             <td>{{ bill.creditor_name }}</td>
                             <td>
-                                <a href="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" class="btn btn-success btn-sm">Pay Bill</a>
+                                <form action="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-success btn-sm">Pay Bill</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
@@ -73,7 +75,9 @@
                             <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
                             <td>{{ bill.creditor_name }}</td>
                             <td>
-                                <a href="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" class="btn btn-success btn-sm">Pay Bill</a>
+                                <form action="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-success btn-sm">Pay Bill</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
@@ -84,7 +88,6 @@
             {% endif %}
         </div>
     </div>
-
     <!-- Recently Paid Bills Section -->
     <div class="card mt-4">
         <div class="card-header bg-success text-white">
@@ -104,20 +107,121 @@
                     </thead>
                     <tbody>
                         {% for bill in paid_bills %}
-                        <tr>
+                        <tr class="paid-bill-row {% if loop.index0 >= 5 %}d-none{% endif %}">
                             <td>{{ bill.bill_name }}</td>
                             <td>{{ bill.group_name }}</td>
                             <td>£{{ '%.2f' % bill.amount }}</td>
-                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.paid_date.strftime('%d %b %Y') if bill.paid_date else 'N/A' }}</td>
                             <td>{{ bill.creditor_name }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <!-- Show/Hide buttons for paid bills -->
+                <button id="showAllPaidBills" class="btn btn-primary">Show All</button>
+                <button id="hidePaidBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
                 <p class="text-muted">You have not paid any bills recently.</p>
             {% endif %}
         </div>
     </div>
+    <!-- Future Bills Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            Future Bills (>1 month away)
+        </div>
+        <div class="card-body">
+            {% if future_bills %}
+                <table class="table table-bordered table-striped">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Bill Name</th>
+                            <th>Group Name</th>
+                            <th>Amount Due</th>
+                            <th>Due Date</th>
+                            <th>Pay To</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in future_bills %}
+                        <tr class="future-bill-row {% if loop.index0 >= 5 %}d-none{% endif %}">
+                            <td>{{ bill.bill_name }}</td>
+                            <td>{{ bill.group_name }}</td>
+                            <td>£{{ '%.2f' % bill.amount }}</td>
+                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.creditor_name }}</td>
+                            <td>
+                                <form action="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-success btn-sm">Pay Bill</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% for bill in all_future_bills %}
+                        <tr class="future-bill-row d-none">
+                            <td>{{ bill.bill_name }}</td>
+                            <td>{{ bill.group_name }}</td>
+                            <td>£{{ '%.2f' % bill.amount }}</td>
+                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ bill.creditor_name }}</td>
+                            <td>
+                                <form action="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-success btn-sm">Pay Bill</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Show/Hide buttons -->
+                <button id="showAllFutureBills" class="btn btn-primary">Show All</button>
+                <button id="hideFutureBills" class="btn btn-primary d-none">Hide</button>
+            {% else %}
+                <p class="text-muted">You have no future bills due more than 1 month away.</p>
+            {% endif %}
+        </div>
+    </div>
+
+
 </div>
+
+<script>
+    // JavaScript to toggle the visibility of additional future bills
+    document.getElementById('showAllFutureBills').addEventListener('click', function () {
+        const rows = document.querySelectorAll('.future-bill-row.d-none');
+        rows.forEach(row => row.classList.remove('d-none')); // Show all rows
+        document.getElementById('hideFutureBills').classList.remove('d-none'); // Show Hide button
+        this.classList.add('d-none'); // Hide the Show All button
+    });
+
+    document.getElementById('hideFutureBills').addEventListener('click', function () {
+        const rows = document.querySelectorAll('.future-bill-row');
+        rows.forEach((row, index) => {
+            if (index >= 5) row.classList.add('d-none'); // Hide additional rows
+        });
+        document.getElementById('showAllFutureBills').classList.remove('d-none'); // Show Show All button
+        this.classList.add('d-none'); // Hide Hide button
+    });
+
+    // JavaScript to toggle the visibility of additional paid bills
+    document.getElementById('showAllPaidBills').addEventListener('click', function () {
+        const rows = document.querySelectorAll('.paid-bill-row.d-none');
+        rows.forEach(row => row.classList.remove('d-none')); // Show all rows
+        document.getElementById('hidePaidBills').classList.remove('d-none'); // Show Hide button
+        this.classList.add('d-none'); // Hide the Show All button
+    });
+
+    document.getElementById('hidePaidBills').addEventListener('click', function () {
+        const rows = document.querySelectorAll('.paid-bill-row');
+        rows.forEach((row, index) => {
+            if (index >= 5) row.classList.add('d-none'); // Hide additional rows
+        });
+        document.getElementById('showAllPaidBills').classList.remove('d-none'); // Show Show All button
+        this.classList.add('d-none'); // Hide Hide button
+    });
+</script>
 {% endblock %}

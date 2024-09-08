@@ -42,6 +42,7 @@ class Ledger(db.Model):
     amount = db.Column(Float)
     status = db.Column(String(50))  # 'owe', 'paid', etc.
     due_date = db.Column(TIMESTAMP)
+    paid_date = db.Column(TIMESTAMP)
     created_at = db.Column(db.TIMESTAMP, default=db.func.current_timestamp())
     updated_at = db.Column(db.TIMESTAMP, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 

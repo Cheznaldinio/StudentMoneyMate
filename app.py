@@ -159,14 +159,30 @@ def home():
         Ledger.status == 'paid'
     ).order_by(Ledger.due_date.desc()).all()
 
+    # Fetch future bills (more than one month away) and limit to 5 initially
+    future_bills = Ledger.query.filter(
+        Ledger.user_id == user_id,
+        Ledger.due_date > one_month_from_now,
+        Ledger.status == 'owe'
+    ).order_by(Ledger.due_date.asc()).limit(5).all()
+
+    # Fetch all future bills for the "Show All" functionality
+    all_future_bills = Ledger.query.filter(
+        Ledger.user_id == user_id,
+        Ledger.due_date > one_month_from_now,
+        Ledger.status == 'owe'
+    ).order_by(Ledger.due_date.asc()).all()
+
     return render_template('home.html',
                            user=user,
                            current_bills=current_bills,
                            upcoming_bills=upcoming_bills,
-                           paid_bills=paid_bills)
+                           paid_bills=paid_bills,
+                           future_bills=future_bills,
+                           all_future_bills=all_future_bills)
 
 
-@app.route('/pay_bill/<ledger_id>', methods=['GET'])
+@app.route('/pay_bill/<ledger_id>', methods=['POST'])
 def pay_bill(ledger_id):
     # Ensure user is logged in
     user_id = session.get('user_id')
@@ -186,8 +202,9 @@ def pay_bill(ledger_id):
         return redirect(url_for('home'))
 
     try:
-        # Mark the bill as paid
+        # Mark the bill as paid and set the current timestamp for paid_date
         ledger_entry.status = 'paid'
+        ledger_entry.paid_date = datetime.now()
         ledger_entry.updated_at = db.func.current_timestamp()  # Update the timestamp
 
         # Notify the creditor that the bill has been paid
@@ -206,18 +223,15 @@ def pay_bill(ledger_id):
                 read=False
             )
             db.session.add(new_notification)
-
         # Commit the changes to the database
         db.session.commit()
-        flash("Bill paid successfully and the creditor has been notified.", "success")
 
+        flash("Bill paid successfully.", "success")
     except Exception as e:
         db.session.rollback()  # Rollback in case of any error
         flash(f"An error occurred while paying the bill: {str(e)}", "danger")
 
     return redirect(url_for('home'))
-
-
 
 @app.route('/create_group', methods=['POST'])
 def create_group():
@@ -287,7 +301,15 @@ def save_bill():
     db.session.add(new_bill)
     db.session.commit()
 
-    flash(f"Bill '{bill_name}' has been created successfully.", "success")
+    # Automatically generate the payment schedule after creating the bill
+    try:
+        generate_payment_schedule(bill_id)  # Call the function to generate the schedule
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while generating the payment schedule: {str(e)}", "danger")
+        return redirect(url_for('home'))
+
+    flash(f"Bill '{bill_name}' has been created and the payment schedule was generated successfully.", "success")
     return redirect(url_for('home'))
 
 @app.route('/my_bills', methods=['GET'])
