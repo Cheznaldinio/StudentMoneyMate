@@ -262,55 +262,58 @@ def create_group():
 
     return redirect(url_for('home'))
 
-@app.route('/get_group_members/<group_id>', methods=['GET'])
-def get_group_members(group_id):
-    group_members = GroupMembers.query.filter_by(group_id=group_id).all()
-    members_data = [
-        {"user_name": member.user.user_name, "email": member.user.email} for member in group_members
-    ]
-    return jsonify(members=members_data)
-
-@app.route('/create_bill', methods=['POST'])
+@app.route('/create_bill', methods=['GET', 'POST'])
 def save_bill():
+    # Check if the user is logged in
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('login'))
 
-    bill_id  = generate_hex_id('bill')
-    bill_name = request.form.get('bill_name')
-    bill_type = request.form.get('bill_type')
-    amount = request.form.get('amount')
-    group_id = request.form.get('group_id')
-    start_date = request.form.get('start_date') if bill_type == 'recurring' else None
-    frequency = request.form.get('frequency') if bill_type == 'recurring' else None
-    end_date = request.form.get('end_date') if bill_type == 'recurring' else None
+    # Fetch the groups the user is a member of
+    user_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
+        .filter(GroupMembers.user_id == user_id).all()
 
-    # Create the bill in the database
-    new_bill = Bills(
-        bill_id=bill_id,
-        bill_name=bill_name,
-        group_id=group_id,
-        bill_type=bill_type,
-        amount=amount,
-        start_date=start_date,
-        frequency=frequency,
-        end_date=end_date,
-        created_by=user_id,
-        status='New',
-    )
-    db.session.add(new_bill)
-    db.session.commit()
+    if request.method == 'POST':
+        try:
+            bill_id  = generate_hex_id('bill')
+            bill_name = request.form.get('bill_name')
+            bill_type = request.form.get('bill_type')
+            amount = request.form.get('amount')
+            group_id = request.form.get('group_id')
+            start_date = request.form.get('start_date') if bill_type == 'recurring' else None
+            frequency = request.form.get('frequency') if bill_type == 'recurring' else None
+            end_date = request.form.get('end_date') if bill_type == 'recurring' else None
 
-    # Automatically generate the payment schedule after creating the bill
-    try:
-        generate_payment_schedule(bill_id)  # Call the function to generate the schedule
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while generating the payment schedule: {str(e)}", "danger")
-        return redirect(url_for('home'))
+            # Create the bill in the database
+            new_bill = Bills(
+                bill_id=bill_id,
+                bill_name=bill_name,
+                group_id=group_id,
+                bill_type=bill_type,
+                amount=amount,
+                start_date=start_date,
+                frequency=frequency,
+                end_date=end_date,
+                created_by=user_id,
+                status='New',
+            )
+            db.session.add(new_bill)
+            db.session.commit()
 
-    flash(f"Bill '{bill_name}' has been created and the payment schedule was generated successfully.", "success")
-    return redirect(url_for('home'))
+            # Generate payment schedule if it's a recurring bill
+            if bill_type == 'recurring':
+                generate_payment_schedule(bill_id)
+
+            flash(f"Bill '{bill_name}' has been created successfully.", "success")
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "danger")
+            return redirect(url_for('create_bill'))
+
+    # Render the create_bill.html page and pass the groups to the template
+    return render_template('create_bill.html', user_groups=user_groups)
 
 @app.route('/my_bills', methods=['GET'])
 def my_bills():
@@ -329,19 +332,19 @@ def edit_bill(bill_id):
     if not user_id:
         return redirect(url_for('login'))
 
-    # Fetch the bill by its ID and ensure the user is the creator
+    # Fetch the bill and check if the user is the creator
     bill = Bills.query.filter_by(bill_id=bill_id, created_by=user_id).first()
-
     if not bill:
         flash("Bill not found or you don't have permission to edit this bill.", "danger")
         return redirect(url_for('my_bills'))
 
     if request.method == 'POST':
         try:
-            # Update bill details based on form submission
+            # Update the existing bill's details
             bill.bill_name = request.form.get('bill_name')
-            bill.amount = float(request.form.get('amount'))
+            bill.group_id = request.form.get('group_id')
             bill.bill_type = request.form.get('bill_type')
+            bill.amount = float(request.form.get('amount'))
 
             # Update recurring details if it's a recurring bill
             if bill.bill_type == 'recurring':
@@ -350,15 +353,31 @@ def edit_bill(bill_id):
                 bill.end_date = request.form.get('end_date')
 
             db.session.commit()
-            flash("Bill updated successfully.", "success")
+
+            # Only generate the payment schedule if the bill is recurring
+            if bill.bill_type == 'recurring':
+                generate_payment_schedule(bill_id)
+
+            flash(f"Bill '{bill.bill_name}' has been updated successfully.", "success")
+            return redirect(url_for('my_bills'))
+
         except Exception as e:
             db.session.rollback()
             flash(f"An error occurred while updating the bill: {str(e)}", "danger")
-
-        return redirect(url_for('my_bills'))
+            return redirect(url_for('edit_bill', bill_id=bill_id))
 
     # For GET request, render the form with existing bill details
-    return render_template('edit_bill.html', bill=bill)
+    user_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id).filter(GroupMembers.user_id == user_id).all()
+    return render_template('edit_bill.html', bill=bill, user_groups=user_groups)
+
+@app.route('/get_group_members/<group_id>', methods=['GET'])
+def get_group_members(group_id):
+    group_members = GroupMembers.query.filter_by(group_id=group_id).all()
+    members_data = [
+        {"user_name": Users.query.get(member.user_id).user_name, "email": Users.query.get(member.user_id).email}
+        for member in group_members
+    ]
+    return jsonify(members=members_data)
 
 @app.route('/delete_bill/<bill_id>', methods=['POST'])
 def delete_bill(bill_id):
@@ -387,7 +406,6 @@ def delete_bill(bill_id):
         flash(f"An error occurred while deleting the bill: {str(e)}", "danger")
 
     return redirect(url_for('my_bills'))
-
 
 @app.route('/generate_payment_schedule/<bill_id>', methods=['POST'])
 def generate_payment_schedule(bill_id):
@@ -504,13 +522,11 @@ def generate_payment_schedule(bill_id):
 
         db.session.commit()
 
-        flash("Payment schedule generated successfully, and the bill is now Active.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred while generating the payment schedule: {str(e)}", "danger")
 
     return redirect(url_for('my_bills'))
-
 
 @app.route('/view_payment_schedule/<bill_id>', methods=['GET'])
 def view_payment_schedule(bill_id):
@@ -533,8 +549,6 @@ def view_payment_schedule(bill_id):
 
     return render_template('view_payment_schedule.html', bill=bill, ledger_entries=ledger_entries)
 
-
-
 @app.route('/create_bill', methods=['GET'])
 def create_bill():
     # Check if the user is logged in
@@ -548,8 +562,6 @@ def create_bill():
 
     # Render the create_bill.html page and pass the groups to the template
     return render_template('create_bill.html', user_groups=user_groups)
-
-
 
 @app.route('/summary')
 def summary():
@@ -595,8 +607,6 @@ def summary():
                            past_spend=past_spend,
                            future_spend=future_spend,
                            money_owed=money_owed)
-
-
 
 @app.route('/account', methods=['GET'])
 def account():
@@ -757,8 +767,6 @@ def paid_bill():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-
-
 @app.route('/show_groups')
 def show_groups():
 
@@ -859,7 +867,6 @@ def delete_notification(notif_id):
     flash("Notification deleted successfully.", "success")
     return redirect(url_for('notifications'))
 
-
 @app.route('/invite_members/<group_id>', methods=['POST'])
 def invite_members(group_id):
     if 'user_id' not in session:
@@ -910,7 +917,6 @@ def invite_members(group_id):
     db.session.commit()
     return redirect(url_for('edit_group', group_id=group_id))
 
-
 @app.route('/remove_member/<group_id>/<member_id>', methods=['POST'])
 def remove_member(group_id, member_id):
     """
@@ -934,7 +940,6 @@ def remove_member(group_id, member_id):
 
     flash("Member removed successfully.", "success")
     return redirect(url_for('edit_group', group_id=group_id))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
