@@ -3,7 +3,7 @@ import string
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response
 import logging
 import os
-from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications
+from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications, BankDetails
 from uuid import uuid4
 import datetime
 from datetime import datetime, timedelta
@@ -792,7 +792,10 @@ def account():
         return redirect(url_for('index'))
 
     user = Users.query.get(user_id)
-    return render_template('account.html', user=user)
+    bank_details = BankDetails.query.filter_by(user_id=user_id).first()
+
+    return render_template('account.html', user=user, bank_details=bank_details)
+
 
 @app.route('/update_account', methods=['POST'])
 def update_account():
@@ -1326,6 +1329,37 @@ def delete_invite(invite_id):
         flash(f"An error occurred while deleting the invite: {str(e)}", "danger")
 
     return redirect(url_for('edit_group', group_id=invite.group_id))
+
+@app.route('/update_bank_details', methods=['POST'])
+def update_bank_details():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+
+    full_name = request.form['full_name']
+    sort_code = request.form['sort_code']
+    account_number = request.form['account_number']
+
+    bank_details = BankDetails.query.filter_by(user_id=user_id).first()
+
+    if bank_details:
+        # Update existing bank details
+        bank_details.full_name = full_name
+        bank_details.sort_code = sort_code
+        bank_details.account_number = account_number
+    else:
+        # Add new bank details
+        new_bank_details = BankDetails(
+            user_id=user_id,
+            full_name=full_name,
+            sort_code=sort_code,
+            account_number=account_number
+        )
+        db.session.add(new_bank_details)
+
+    db.session.commit()
+    flash("Bank details updated successfully.", "success")
+    return redirect(url_for('account'))
 
 if __name__ == '__main__':
     app.run(debug=True)

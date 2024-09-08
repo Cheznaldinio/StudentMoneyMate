@@ -97,3 +97,17 @@ class Notifications(db.Model):
     def __str__(self):
         return (f"Notification: {self.notif_id}, {self.user_id}, {self.sender_id}, {self.bill_id}, "
                 f"{self.notif_type}, {self.content}, {self.read}")
+
+
+class BankDetails(db.Model):
+    __tablename__ = 'bank_details'
+
+    user_id = db.Column(String(255), db.ForeignKey('users.user_id'), primary_key=True, nullable=False)
+    full_name = db.Column(String(255), nullable=False)
+    sort_code = db.Column(String(10), nullable=False)
+    account_number = db.Column(String(20), nullable=False)
+
+    user = db.relationship('Users', backref=db.backref('bank_details', uselist=False))
+
+    def __str__(self):
+        return f"BankDetails: {self.full_name}, Sort Code: {self.sort_code}, Account Number: {self.account_number}"
