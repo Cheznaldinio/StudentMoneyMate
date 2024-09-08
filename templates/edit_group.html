@@ -6,17 +6,21 @@
 <div class="container mt-5">
     <h2>Edit Group</h2>
 
-    <!-- Group Details (Uneditable) -->
-    <form>
+    <!-- Group Details (Editable by manager only) -->
+    <form action="{{ url_for('edit_group_details', group_id=group.group_id) }}" method="POST">
         <div class="mb-3">
             <label for="groupName" class="form-label">Group Name</label>
-            <input type="text" class="form-control" id="groupName" name="group_name" value="{{ group.group_name }}" disabled>
+            <input type="text" class="form-control" id="groupName" name="group_name" value="{{ group.group_name }}" {% if not is_manager %}disabled{% endif %}>
         </div>
 
         <div class="mb-3">
             <label for="groupType" class="form-label">Group Type</label>
-            <input type="text" class="form-control" id="groupType" name="group_type" value="{{ group.group_type | capitalize }}" disabled>
+            <input type="text" class="form-control" id="groupType" name="group_type" value="{{ group.group_type | capitalize }}" {% if not is_manager %}disabled{% endif %}>
         </div>
+
+        {% if is_manager %}
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        {% endif %}
     </form>
 
     <!-- Group Members List -->
@@ -25,13 +29,47 @@
         {% for member in group_members %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             {{ member.user_name }} ({{ member.email }})
-            <!-- Remove User Button (Separate Form) -->
-            <form action="{{ url_for('remove_member', group_id=group.group_id, member_id=member.user_id) }}" method="POST" style="display:inline;">
-                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-            </form>
+            {% if member.user_id != group.manager_id %}
+                <!-- Manager can remove members, normal users can't -->
+                {% if is_manager %}
+                <form action="{{ url_for('remove_member', group_id=group.group_id, member_id=member.user_id) }}" method="POST" style="display:inline;" onsubmit="return confirmRemoveMember('{{ member.user_name }}');">
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                </form>
+                {% endif %}
+            {% else %}
+                <span class="badge bg-success">Manager</span>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
+
+        <!-- Pending Invites List -->
+    <h4>Pending Invites</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Invited By</th>
+                <th>Invitee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invite in pending_invites %}
+            <tr>
+                <td>{{ invite.sender.user_name }}</td>
+                <td>{{ invite.invitee_email }}</td>  <!-- Displaying invitee's email -->
+                <td>
+                    {% if is_manager %}
+                    <form action="{{ url_for('delete_invite', invite_id=invite.notif_id) }}" method="POST" onsubmit="return confirmDeleteInvite('{{ invite.invitee_email }}');">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete Invite</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
 
     <!-- Invite New Members -->
     <h4>Invite New Members</h4>
@@ -39,16 +77,40 @@
         <div class="mb-3">
             <label for="inviteEmails" class="form-label">Email Addresses</label>
             <input type="text" class="form-control" id="inviteEmails" name="invite_emails" placeholder="Enter email addresses, comma-separated" required>
-            <div class="invalid-feedback">Please provide at least one valid email address.</div>
         </div>
-
-        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary">Invite Members</button>
     </form>
+
+    <!-- Leave Group Button -->
+    {% if is_manager %}
+    <form action="{{ url_for('leave_group', group_id=group.group_id) }}" method="POST" onsubmit="return confirmLeaveGroup(true);">
+        <button type="submit" class="btn btn-danger mt-4">Leave Group</button>
+    </form>
+    <form action="{{ url_for('delete_group', group_id=group.group_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the group? This action cannot be undone.');">
+        <button type="submit" class="btn btn-dark mt-2">Delete Group</button>
+    </form>
+    {% else %}
+    <form action="{{ url_for('leave_group', group_id=group.group_id) }}" method="POST" onsubmit="return confirmLeaveGroup(false);">
+        <button type="submit" class="btn btn-danger mt-4">Leave Group</button>
+    </form>
+    {% endif %}
 </div>
 
-<!-- Simplified Script Block -->
 <script>
-    // You can add custom validation here if needed, but basic HTML5 validation should handle it
+    function confirmRemoveMember(userName) {
+        return confirm('Are you sure you want to remove ' + userName + ' from the group?');
+    }
+
+    function confirmDeleteInvite(email) {
+        return confirm('Are you sure you want to delete the invite for ' + email + '?');
+    }
+
+    function confirmLeaveGroup(isManager) {
+        if (isManager) {
+            return confirm('Are you sure you want to leave the group? The next member will be promoted to manager.');
+        } else {
+            return confirm('Are you sure you want to leave the group?');
+        }
+    }
 </script>
 {% endblock %}

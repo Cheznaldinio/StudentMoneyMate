@@ -446,8 +446,7 @@ def save_bill():
             db.session.commit()
 
             # Generate payment schedule if it's a recurring bill
-            if bill_type == 'recurring':
-                generate_payment_schedule(bill_id)
+            generate_payment_schedule(bill_id)
 
             flash(f"Bill '{bill_name}' has been created successfully.", "success")
             return redirect(url_for('home'))
@@ -460,16 +459,47 @@ def save_bill():
     # Render the create_bill.html page and pass the groups to the template
     return render_template('create_bill.html', user_groups=user_groups)
 
+
 @app.route('/my_bills', methods=['GET'])
 def my_bills():
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('login'))
 
-    # Fetch the bills created by the user
-    created_bills = Bills.query.filter_by(created_by=user_id).all()
+    # Fetch the bills created by the user, joining with the Groups table to get the group name
+    created_bills = db.session.query(Bills, Groups.group_name).join(Groups,
+                                                                    Bills.group_id == Groups.group_id).filter(
+        Bills.created_by == user_id).all()
 
-    return render_template('my_bills.html', created_bills=created_bills)
+    # Modify the bill data to calculate repetitions and adjust end_date for one-off or recurring bills
+    modified_bills = []
+    for bill, group_name in created_bills:
+        # Query the ledger to count how many times the bill appears for the current user
+        repetitions = Ledger.query.filter_by(bill_id=bill.bill_id, user_id=user_id).count()
+
+        # Fetch the latest due_date from the ledger
+        latest_ledger_entry = Ledger.query.filter_by(bill_id=bill.bill_id,
+                                                     user_id=user_id).order_by(
+            Ledger.due_date.desc()).first()
+
+        if latest_ledger_entry:
+            latest_due_date = latest_ledger_entry.due_date
+        else:
+            latest_due_date = None
+
+        # If the bill appears only once, treat it as a one-off bill, even if it's recurring
+        if repetitions <= 1:
+            repetitions = 1
+            end_date = latest_due_date
+        else:
+            # For recurring bills, use the actual end date from the bill model
+            end_date = bill.end_date if bill.end_date else latest_due_date
+
+        # Append the bill details to the modified list
+        modified_bills.append((bill, group_name, repetitions, end_date))
+
+    return render_template('my_bills.html', created_bills=modified_bills)
+
 
 @app.route('/edit_bill/<bill_id>', methods=['GET', 'POST'])
 def edit_bill(bill_id):
@@ -500,8 +530,7 @@ def edit_bill(bill_id):
             db.session.commit()
 
             # Only generate the payment schedule if the bill is recurring
-            if bill.bill_type == 'recurring':
-                generate_payment_schedule(bill_id)
+            generate_payment_schedule(bill_id)
 
             flash(f"Bill '{bill.bill_name}' has been updated successfully.", "success")
             return redirect(url_for('my_bills'))
@@ -538,14 +567,17 @@ def delete_bill(bill_id):
         return redirect(url_for('my_bills'))
 
     try:
-        # Delete associated ledger entries
+        # First, delete associated notifications
+        Notifications.query.filter_by(bill_id=bill.bill_id).delete()
+
+        # Then, delete associated ledger entries
         Ledger.query.filter_by(bill_id=bill.bill_id).delete()
 
-        # Delete the bill itself
+        # Finally, delete the bill itself
         db.session.delete(bill)
         db.session.commit()
 
-        flash("Bill deleted successfully.", "success")
+        flash("Bill and related notifications deleted successfully.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred while deleting the bill: {str(e)}", "danger")
@@ -987,11 +1019,27 @@ def delete_group(group_id):
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('home'))
 
-@app.route('/edit_group/<group_id>', methods=['GET'])
+@app.route('/edit_group/<group_id>', methods=['GET', 'POST'])
 def edit_group(group_id):
-    """
-    Edit group details and manage members.
-    """
+    user_id = session.get('user_id')
+
+    # Check if user is logged in
+    if not user_id:
+        flash("You need to be logged in to access the group.", "danger")
+        return redirect(url_for('login'))
+
+    # Fetch group and members
+    group = Groups.query.filter_by(group_id=group_id).first()
+    group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id).filter(GroupMembers.group_id == group_id).all()
+    pending_invites = Notifications.query.filter_by(group_id=group_id, notif_type='group_invite', read=False).all()
+
+    # Check if current user is the manager
+    is_manager = (group.manager_id == user_id)
+
+    return render_template('edit_group.html', group=group, group_members=group_members, pending_invites=pending_invites, is_manager=is_manager)
+
+@app.route('/edit_group_details/<group_id>', methods=['POST'])
+def edit_group_details(group_id):
     user_id = session.get('user_id')
 
     if not user_id:
@@ -1004,13 +1052,22 @@ def edit_group(group_id):
         flash("You are not authorized to edit this group.", "danger")
         return redirect(url_for('home'))
 
+    new_group_name = request.form.get('group_name')
+    new_group_type = request.form.get('group_type')
 
-        return redirect(url_for('show_groups', group_id=group_id))
+    # Update the group's name and type
+    group.group_name = new_group_name
+    group.group_type = new_group_type
 
-    # Fetch group members for the GET request
-    group_members = Users.query.join(GroupMembers, Users.user_id == GroupMembers.user_id).filter(GroupMembers.group_id == group_id).all()
+    try:
+        db.session.commit()
+        flash("Group details updated successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while updating the group details: {str(e)}", "danger")
 
-    return render_template('edit_group.html', group=group, group_members=group_members)
+    return redirect(url_for('edit_group', group_id=group_id))
+
 
 @app.route('/delete_notification/<int:notif_id>', methods=['POST'])
 def delete_notification(notif_id):
@@ -1029,6 +1086,34 @@ def delete_notification(notif_id):
     flash("Notification deleted successfully.", "success")
     return redirect(url_for('notifications'))
 
+@app.route('/leave_group/<group_id>', methods=['POST'])
+def leave_group(group_id):
+    user_id = session.get('user_id')
+
+    if not user_id:
+        flash("You need to be logged in to leave the group.", "danger")
+        return redirect(url_for('home'))
+
+    group = Groups.query.filter_by(group_id=group_id).first()
+
+    # If user is the manager, promote the next person
+    if group.manager_id == user_id:
+        next_member = GroupMembers.query.filter(GroupMembers.group_id == group_id, GroupMembers.user_id != user_id).first()
+        if next_member:
+            group.manager_id = next_member.user_id
+            flash(f"Group manager role has been transferred to {next_member.user_name}.", "success")
+        else:
+            flash("You cannot leave the group because there are no other members.", "danger")
+            return redirect(url_for('edit_group', group_id=group_id))
+
+    # Remove user from the group
+    GroupMembers.query.filter_by(group_id=group_id, user_id=user_id).delete()
+    db.session.commit()
+
+    flash("You have successfully left the group.", "success")
+    return redirect(url_for('home'))
+
+
 @app.route('/invite_members/<group_id>', methods=['POST'])
 def invite_members(group_id):
     if 'user_id' not in session:
@@ -1041,49 +1126,55 @@ def invite_members(group_id):
 
     # Get the group from the database
     group = Groups.query.get(group_id)
+    if not group:
+        flash('Group not found.', 'danger')
+        return redirect(url_for('edit_group', group_id=group_id))
 
+    # Process each email invite
     for email in email_list:
         # Check if the user exists in the system
         invited_user = Users.query.filter_by(email=email).first()
 
         if invited_user:
-            # Check if the user is already a member of the group
+            # If the user exists, check if they are already in the group
             existing_member = GroupMembers.query.filter_by(user_id=invited_user.user_id, group_id=group_id).first()
 
             if existing_member:
-                flash(f"{email} is already a member of the group.", "warning")
+                flash(f'{email} is already a member of the group.', 'warning')
             else:
                 # Add the user to the group
-                new_member = GroupMembers(user_id=invited_user.user_id, group_id=group_id)
-                db.session.add(new_member)
-
-                # Send a notification to the user
-                notification_message = f"You have been invited to join the group '{group.group_name}'."
                 new_notification = Notifications(
-                    user_id=invited_user.user_id,
-                    sender_id=session['user_id'],  # Assuming the current user is the sender
+                    user_id=invited_user.user_id,  # Assign user_id because the user exists
+                    sender_id=session['user_id'],  # Current user sending the invite
                     notif_type='group_invite',
-                    content=notification_message,
+                    content=f"You have been invited to join the group '{group.group_name}'.",
+                    invitee_email=email,  # Save the invitee email in case they don't accept immediately
+                    group_id=group_id,
                     read=False
                 )
                 db.session.add(new_notification)
-
-                flash(f"Invitation sent to {email}.", "success")
-
+                flash(f"Invitation sent to {email}.", 'success')
         else:
-            # Handle the case where the email does not exist in the system
-            flash(f"{email} does not exist in the system. Sending a notification email (stub for now).", "info")
-            # Here you can integrate email sending logic later as a stub
-            # send_email_stub(email, group.group_name)
+            # If user does not exist, still create an invite, but without user_id
+            new_notification = Notifications(
+                sender_id=session['user_id'],  # Current user sending the invite
+                notif_type='group_invite',
+                content=f"You have been invited to join the group '{group.group_name}'.",
+                invitee_email=email,  # Save the invitee email
+                group_id=group_id,
+                read=False
+            )
+            db.session.add(new_notification)
+            flash(f"Invitation sent to {email}.", 'success')
 
     db.session.commit()
     return redirect(url_for('edit_group', group_id=group_id))
 
+
+
+
 @app.route('/remove_member/<group_id>/<member_id>', methods=['POST'])
 def remove_member(group_id, member_id):
-    """
-    Remove a user from a group (only by group manager).
-    """
     user_id = session.get('user_id')
 
     if not user_id:
@@ -1093,15 +1184,148 @@ def remove_member(group_id, member_id):
     group = Groups.query.filter_by(group_id=group_id).first()
 
     if not group or group.manager_id != user_id:
-        flash("You are not authorized to remove members from this group.", "danger")
+        flash("You are not authorized to remove this member.", "danger")
         return redirect(url_for('edit_group', group_id=group_id))
 
-    # Remove the member from the group
-    GroupMembers.query.filter_by(user_id=member_id, group_id=group_id).delete()
+    # Remove the member
+    GroupMembers.query.filter_by(group_id=group_id, user_id=member_id).delete()
     db.session.commit()
 
     flash("Member removed successfully.", "success")
     return redirect(url_for('edit_group', group_id=group_id))
+
+
+@app.route('/accept_invite/<notif_id>', methods=['POST'])
+def accept_invite(notif_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        logging.error("User not logged in.")
+        return redirect(url_for('login'))
+
+    # Log user and notification details
+    logging.info(f"Accept invite called by user: {user_id}, notification: {notif_id}")
+
+    # Fetch the notification
+    notification = Notifications.query.get(notif_id)
+    if not notification:
+        logging.error(f"Notification not found for notif_id: {notif_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    # Fetch the group details
+    group = Groups.query.get(notification.group_id)
+    if not group:
+        logging.error(f"Group not found for group_id: {notification.group_id} in notification: {notif_id}")
+        flash("Group not found.", "danger")
+        return redirect(url_for('notifications'))
+
+    try:
+        # Log before adding user to group
+        logging.info(f"Adding user_id: {user_id} to group_id: {group.group_id}")
+
+        # Add the user to the group
+        new_member = GroupMembers(group_id=group.group_id, user_id=user_id)
+        db.session.add(new_member)
+
+        # Send notification to the inviter
+        inviter_id = notification.sender_id
+        notification_message = f"{session['user_name']} has accepted your invite to join '{group.group_name}'."
+        new_notification = Notifications(
+            user_id=inviter_id,  # Notify the inviter
+            sender_id=user_id,    # Current user is the sender
+            notif_type="invite_accepted",
+            content=notification_message,
+            read=False
+        )
+        db.session.add(new_notification)
+
+        # Mark the original notification as read
+        notification.read = True
+        db.session.commit()
+
+        logging.info(f"User {user_id} successfully joined group {group.group_name} and notification sent to inviter {inviter_id}")
+        flash("You have successfully joined the group.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error occurred while accepting invite: {str(e)}")
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('notifications'))
+
+@app.route('/deny_invite/<notif_id>', methods=['POST'])
+def deny_invite(notif_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        logging.error("User not logged in.")
+        return redirect(url_for('login'))
+
+    # Log user and notification details
+    logging.info(f"Deny invite called by user: {user_id}, notification: {notif_id}")
+
+    # Fetch the notification
+    notification = Notifications.query.get(notif_id)
+    if not notification:
+        logging.error(f"Notification not found for notif_id: {notif_id}")
+        flash("Invalid operation.", "danger")
+        return redirect(url_for('notifications'))
+
+    # Fetch the group details
+    group = Groups.query.get(notification.group_id)
+    if not group:
+        logging.error(f"Group not found for group_id: {notification.group_id} in notification: {notif_id}")
+        flash("Group not found.", "danger")
+        return redirect(url_for('notifications'))
+
+    try:
+        # Notify the inviter that the invite was denied
+        inviter_id = notification.sender_id
+        notification_message = f"{session['user_name']} has denied your invite to join '{group.group_name}'."
+        new_notification = Notifications(
+            user_id=inviter_id,  # Notify the inviter
+            sender_id=user_id,    # Current user is the sender
+            notif_type="invite_denied",
+            content=notification_message,
+            read=False
+        )
+        db.session.add(new_notification)
+
+        # Mark the original notification as read
+        notification.read = True
+        db.session.commit()
+
+        logging.info(f"User {user_id} denied invite to group {group.group_name} and notification sent to inviter {inviter_id}")
+        flash("You have successfully denied the invite.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error occurred while denying invite: {str(e)}")
+        flash(f"An error occurred: {str(e)}", "danger")
+
+    return redirect(url_for('notifications'))
+
+@app.route('/delete_invite/<int:invite_id>', methods=['POST'])
+def delete_invite(invite_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        flash("You need to be logged in to delete an invite.", "danger")
+        return redirect(url_for('home'))
+
+    invite = Notifications.query.filter_by(notif_id=invite_id, notif_type='group_invite').first()
+
+    if not invite:
+        flash("Invite not found or unauthorized action.", "danger")
+        return redirect(url_for('edit_group', group_id=invite.group_id))
+
+    try:
+        db.session.delete(invite)
+        db.session.commit()
+        flash("Invite deleted successfully.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while deleting the invite: {str(e)}", "danger")
+
+    return redirect(url_for('edit_group', group_id=invite.group_id))
 
 if __name__ == '__main__':
     app.run(debug=True)

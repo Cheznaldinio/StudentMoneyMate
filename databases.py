@@ -81,12 +81,15 @@ class GroupMembers(db.Model):
 
 class Notifications(db.Model):
     notif_id = db.Column(Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(String(255), ForeignKey('users.user_id'))
-    sender_id = db.Column(String(255), ForeignKey('users.user_id'))
-    bill_id = db.Column(String(255), ForeignKey('bills.bill_id'))
-    notif_type = db.Column(String(255))
-    content = db.Column(String(255))
-    read = db.Column(Boolean, default=False)
+    user_id = db.Column(db.String(10), db.ForeignKey('users.user_id'), nullable=True)  # Nullable since it's not always user-related
+    sender_id = db.Column(db.String(10), db.ForeignKey('users.user_id'))
+    bill_id = db.Column(db.String(10), db.ForeignKey('bills.bill_id'), nullable=True)  # Nullable since it might not always be bill-related
+    group_id = db.Column(db.String(10), db.ForeignKey('groups.group_id'), nullable=True)  # Nullable for non-group invites
+    notif_type = db.Column(db.String(50))
+    content = db.Column(db.String(255))
+    read = db.Column(db.Boolean, default=False)
+    invitee_email = db.Column(db.String(255), nullable=True)  # This is where the invitee email is saved
+    read = db.Column(db.Boolean, default=False)
 
     sender = db.relationship('Users', foreign_keys=[sender_id])
     bill = db.relationship('Bills', foreign_keys=[bill_id])

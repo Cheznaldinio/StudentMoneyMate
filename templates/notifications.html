@@ -14,7 +14,7 @@
                     <th>Type</th>
                     <th>Content</th>
                     <th>Sender</th>
-                    <th>Bill</th>
+                    <th>Bill/Group</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -39,10 +39,12 @@
                         {% endif %}
                     </td>
 
-                    <!-- Bill Info -->
+                    <!-- Bill/Group Info -->
                     <td>
                         {% if notification.bill_id %}
                         {{ notification.bill.bill_name }} (ID: {{ notification.bill_id }})
+                        {% elif notification.notif_type == 'group_invite' %}
+                        Group Invite
                         {% else %}
                         N/A
                         {% endif %}
@@ -57,7 +59,7 @@
                         {% endif %}
                     </td>
 
-                    <!-- Actions (Confirm/Deny for payment confirmations) -->
+                    <!-- Actions -->
                     <td>
                         {% if notification.notif_type == 'payment_confirmation_request' and not notification.read %}
                         <!-- Confirm/Deny buttons for payment confirmation -->
@@ -65,6 +67,14 @@
                             <button type="submit" class="btn btn-success btn-sm">Confirm</button>
                         </form>
                         <form action="{{ url_for('deny_payment', notif_id=notification.notif_id, ledger_id=ledger_entry.ledger_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">Deny</button>
+                        </form>
+                        {% elif notification.notif_type == 'group_invite' and not notification.read %}
+                        <!-- Accept/Deny buttons for group invites -->
+                        <form action="{{ url_for('accept_invite', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                        </form>
+                        <form action="{{ url_for('deny_invite', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
                             <button type="submit" class="btn btn-danger btn-sm">Deny</button>
                         </form>
                         {% elif not notification.read %}
