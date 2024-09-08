@@ -1,6 +1,6 @@
 import random
 import string
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response, g
 import logging
 import os
 from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications, BankDetails
@@ -10,6 +10,11 @@ from datetime import datetime, timedelta
 import calendar
 from services.group_services import GroupService
 from collections import defaultdict
+import os
+from werkzeug.utils import secure_filename
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,10 +27,45 @@ app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = 'your_secret_key'
 db.init_app(app)
-
+UPLOAD_FOLDER = os.path.join(basedir, 'static/profile_pictures')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure the database tables are created
 with app.app_context():
     db.create_all()
+
+@app.context_processor
+def inject_user():
+    user_id = session.get('user_id')
+    if user_id:
+        user = Users.query.get(user_id)
+        return {'user': user}
+    return {}
+
+
+def get_unread_notifications_count(user_id):
+    return Notifications.query.filter_by(user_id=user_id, read=False).count()
+
+
+@app.before_request
+def load_user_data():
+    """
+    Load the current user and unread notifications count
+    into the global object `g` for use in templates.
+    """
+    g.user = None
+    g.unread_notifications_count = 0
+
+    if 'user_id' in session:
+        user_id = session['user_id']
+        g.user = Users.query.get(user_id)  # Load user into `g`
+
+        # Fetch unread notifications count
+        g.unread_notifications_count = get_unread_notifications_count(user_id)
+
+# Function to check if the file extension is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def generate_hex_id(prefix):
     return f"{prefix}{''.join(random.choices('0123456789ABCDEF', k=6))}"
@@ -355,7 +395,6 @@ def pay_bill(ledger_id):
 
     return redirect(url_for('home'))
 
-
 @app.route('/mark_as_read/<notif_id>', methods=['POST'])
 def mark_as_read(notif_id):
     user_id = session.get('user_id')
@@ -376,7 +415,6 @@ def mark_as_read(notif_id):
         flash(f"An error occurred while marking the notification as read: {str(e)}", "danger")
 
     return redirect(url_for('notifications'))
-
 
 @app.route('/create_group', methods=['POST'])
 def create_group():
@@ -459,7 +497,6 @@ def save_bill():
     # Render the create_bill.html page and pass the groups to the template
     return render_template('create_bill.html', user_groups=user_groups)
 
-
 @app.route('/my_bills', methods=['GET'])
 def my_bills():
     user_id = session.get('user_id')
@@ -499,7 +536,6 @@ def my_bills():
         modified_bills.append((bill, group_name, repetitions, end_date))
 
     return render_template('my_bills.html', created_bills=modified_bills)
-
 
 @app.route('/edit_bill/<bill_id>', methods=['GET', 'POST'])
 def edit_bill(bill_id):
@@ -796,6 +832,8 @@ def account():
 
     return render_template('account.html', user=user, bank_details=bank_details)
 
+from PIL import Image
+import os
 
 @app.route('/update_account', methods=['POST'])
 def update_account():
@@ -813,11 +851,48 @@ def update_account():
             flash('Incorrect previous password. Changes not saved.', 'error')
             return redirect(url_for('account'))
 
+        # Update username and email
         user.user_name = request.form['name']
         user.email = request.form['email']
+
+        # If the new password field is filled, update the password
         if request.form['new_password']:
             user.password = request.form['new_password']
 
+        # Handle profile picture upload
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(f"{user_id}.png")
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                # Save the uploaded file temporarily
+                temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_' + filename)
+                file.save(temp_file_path)
+
+                # Open the image for processing
+                with Image.open(temp_file_path) as img:
+                    # Get image dimensions
+                    width, height = img.size
+
+                    # Crop the image to a square by using the smallest dimension
+                    new_size = min(width, height)
+                    left = (width - new_size) / 2
+                    top = (height - new_size) / 2
+                    right = (width + new_size) / 2
+                    bottom = (height + new_size) / 2
+                    img_cropped = img.crop((left, top, right, bottom))
+
+                    # Resize the image to 512x512, maintaining aspect ratio
+                    img_resized = img_cropped.resize((512, 512))
+
+                    # Save the resized and compressed image to the destination
+                    img_resized.save(file_path, "PNG", quality=85)
+
+                # Remove the temporary file after processing
+                os.remove(temp_file_path)
+
+        # Commit the changes to the database
         db.session.commit()
 
         flash('Account updated successfully!', 'success')
@@ -827,6 +902,7 @@ def update_account():
         db.session.rollback()
         flash(f'Error updating account: {str(e)}', 'error')
         return redirect(url_for('account'))
+
 
 @app.route('/header', methods=['GET'])
 def header():
@@ -1173,9 +1249,6 @@ def invite_members(group_id):
     db.session.commit()
     return redirect(url_for('edit_group', group_id=group_id))
 
-
-
-
 @app.route('/remove_member/<group_id>/<member_id>', methods=['POST'])
 def remove_member(group_id, member_id):
     user_id = session.get('user_id')
@@ -1196,7 +1269,6 @@ def remove_member(group_id, member_id):
 
     flash("Member removed successfully.", "success")
     return redirect(url_for('edit_group', group_id=group_id))
-
 
 @app.route('/accept_invite/<notif_id>', methods=['POST'])
 def accept_invite(notif_id):

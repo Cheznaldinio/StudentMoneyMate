@@ -15,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
     <!-- Favicon (Logo as icon) -->
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo2.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
 </head>
 <body>
     <header>
@@ -46,11 +46,22 @@
                                 <i class="fas fa-user"></i> Individual
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('notifications') }}">
+
+                        <!-- Notifications -->
+                        <li class="nav-item position-relative">
+                            <a class="nav-link" href="{{ url_for('notifications') }}" style="position: relative;">
                                 <i class="fas fa-bell"></i> Notifications
+                                {% if g.unread_notifications_count > 0 %}
+                                    <span class="position-absolute top-1 start-0 translate-middle badge rounded-pill bg-danger"
+                                          style="transform: translate(20%, -50%); font-size: 0.75em; padding: 0.2em 0.4em;">
+                                        {{ g.unread_notifications_count }}
+                                    </span>
+                                {% endif %}
                             </a>
                         </li>
+
+
+
 
                         <!-- Groups Dropdown -->
                         <li class="nav-item dropdown">
@@ -74,10 +85,12 @@
                             </ul>
                         </li>
 
-                        <!-- Profile Dropdown and Light/Dark Mode -->
+                        <!-- Profile Dropdown -->
                         <li class="nav-item dropdown">
                             <a href="#" class="nav-link dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="{{ url_for('static', filename=user.profile_picture if 'user' in session else 'profile.png') }}" class="rounded-circle" width="32" height="32" alt="Profile">
+                                <img src="{{ url_for('static', filename='profile_pictures/' + (g.user.user_id + '.png') if g.user else 'profile.png') }}"
+                                     class="rounded-circle" width="32" height="32" alt="Profile"
+                                     onerror="this.src='{{ url_for('static', filename='profile_pictures/profile.png') }}'">
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('account') }}">Account</a></li>

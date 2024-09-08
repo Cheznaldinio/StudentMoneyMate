@@ -12,7 +12,8 @@
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="profile-section">
-                    <img src="{{ url_for('static', filename=user.profile_picture) }}" class="img-thumbnail" alt="Profile Image">
+                    <!-- Display the user's profile picture if uploaded, otherwise show a default image -->
+                    <img src="{{ url_for('static', filename='profile_pictures/' + user.user_id + '.png') }}" class="img-thumbnail" alt="Profile Image" onerror="this.src='{{ url_for('static', filename='profile_pictures/default.png') }}'">
                 </div>
             </div>
             <div class="col-md-8">
@@ -71,7 +72,7 @@
                     </div>
                     <div class="form-group">
                         <label for="profile_picture">Upload Profile Picture:</label>
-                        <input type="file" class="form-control-file" name="profile_picture">
+                        <input type="file" class="form-control-file" name="profile_picture" accept="image/*">
                     </div>
                     <div class="form-group">
                         <label>Email Notifications:</label>
@@ -121,7 +122,7 @@
     </form>
 </div>
 
-<!-- JavaScript to toggle edit sections and validate input -->
+<!-- JavaScript to toggle edit sections -->
 <script>
     function toggleEdit() {
         var editSection = document.getElementById('edit-section');
@@ -161,5 +162,4 @@
         e.target.value = value;
     });
 </script>
-
 {% endblock %}
