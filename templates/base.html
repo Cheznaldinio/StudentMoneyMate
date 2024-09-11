@@ -97,14 +97,6 @@
                                 <li><a class="dropdown-item" href="{{ url_for('logout') }}">Log Out</a></li>
                             </ul>
                         </li>
-
-                        <!-- Light/Dark Mode Toggle -->
-                        <li class="nav-item">
-                            <button class="btn btn-outline-secondary ms-3" onclick="toggleMode()">
-                                <i class="fas fa-sun icon sun d-inline-block"></i>
-                                <i class="fas fa-moon icon moon d-none"></i>
-                            </button>
-                        </li>
                     </ul>
                 </div>
             </div>
@@ -142,29 +134,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 
     <script>
-        function toggleMode() {
-            document.body.classList.toggle('dark-mode');
-            const sunIcon = document.querySelector('.icon.sun');
-            const moonIcon = document.querySelector('.icon.moon');
-            sunIcon.classList.toggle('d-none');
-            moonIcon.classList.toggle('d-none');
-
-            if (document.body.classList.contains('dark-mode')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        }
-
-        window.onload = function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.body.classList.add('dark-mode');
-                document.querySelector('.icon.sun').classList.add('d-none');
-                document.querySelector('.icon.moon').classList.remove('d-none');
-            }
-        };
-
         // Initialize Bootstrap toast for flash messages
         document.addEventListener('DOMContentLoaded', function () {
             var toastElList = [].slice.call(document.querySelectorAll('.toast'));

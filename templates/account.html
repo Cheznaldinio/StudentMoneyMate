@@ -23,8 +23,6 @@
                     <p><strong>Name:</strong> {{ user.user_name }}</p>
                     <p><strong>Email:</strong> {{ user.email }}</p>
                     <p><strong>Password:</strong> ********</p>
-                    <p><strong>Email Notifications:</strong></p>
-                    <p>ON <input type="radio" name="notifications" checked disabled> OFF <input type="radio" name="notifications" disabled></p>
                 </div>
                 <div class="buttons mt-4">
                     <button type="button" class="btn btn-primary" onclick="toggleEdit()">Edit Personal Details</button>
@@ -73,17 +71,6 @@
                     <div class="form-group">
                         <label for="profile_picture">Upload Profile Picture:</label>
                         <input type="file" class="form-control-file" name="profile_picture" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>Email Notifications:</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="notifications" value="on" checked>
-                            <label class="form-check-label">ON</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="notifications" value="off">
-                            <label class="form-check-label">OFF</label>
-                        </div>
                     </div>
                     <div class="buttons mt-4">
                         <button type="submit" class="btn btn-success">Save Changes</button>
