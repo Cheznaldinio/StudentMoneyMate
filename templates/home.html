@@ -6,8 +6,6 @@
 <div class="container mt-5">
     <h2>Hello, {{ user.user_name }}!</h2>
     <p>Welcome back to Student Money Mate.</p>
-
-    <!-- Current Amounts Owed Section -->
     <div class="card mt-5">
         <div class="card-header bg-danger text-white">
             Current Amounts Due (within 2 weeks)
@@ -47,8 +45,6 @@
             {% endif %}
         </div>
     </div>
-
-    <!-- Upcoming Bills Section -->
     <div class="card mt-4">
         <div class="card-header bg-warning">
             Upcoming Bills (due in the next month)
@@ -88,7 +84,6 @@
             {% endif %}
         </div>
     </div>
-    <!-- Recently Paid Bills Section -->
     <div class="card mt-4">
         <div class="card-header bg-success text-white">
             Recently Paid Bills
@@ -117,8 +112,6 @@
                         {% endfor %}
                     </tbody>
                 </table>
-
-                <!-- Show/Hide buttons for paid bills -->
                 <button id="showAllPaidBills" class="btn btn-primary">Show All</button>
                 <button id="hidePaidBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
@@ -126,7 +119,6 @@
             {% endif %}
         </div>
     </div>
-    <!-- Future Bills Section -->
     <div class="card mt-4">
         <div class="card-header bg-info text-white">
             Future Bills (>1 month away)
@@ -176,8 +168,6 @@
                         {% endfor %}
                     </tbody>
                 </table>
-
-                <!-- Show/Hide buttons -->
                 <button id="showAllFutureBills" class="btn btn-primary">Show All</button>
                 <button id="hideFutureBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
@@ -190,38 +180,36 @@
 </div>
 
 <script>
-    // JavaScript to toggle the visibility of additional future bills
     document.getElementById('showAllFutureBills').addEventListener('click', function () {
         const rows = document.querySelectorAll('.future-bill-row.d-none');
-        rows.forEach(row => row.classList.remove('d-none')); // Show all rows
-        document.getElementById('hideFutureBills').classList.remove('d-none'); // Show Hide button
+        rows.forEach(row => row.classList.remove('d-none'));
+        document.getElementById('hideFutureBills').classList.remove('d-none');
         this.classList.add('d-none'); // Hide the Show All button
     });
 
     document.getElementById('hideFutureBills').addEventListener('click', function () {
         const rows = document.querySelectorAll('.future-bill-row');
         rows.forEach((row, index) => {
-            if (index >= 5) row.classList.add('d-none'); // Hide additional rows
+            if (index >= 5) row.classList.add('d-none');
         });
-        document.getElementById('showAllFutureBills').classList.remove('d-none'); // Show Show All button
-        this.classList.add('d-none'); // Hide Hide button
+        document.getElementById('showAllFutureBills').classList.remove('d-none');
+        this.classList.add('d-none');
     });
 
-    // JavaScript to toggle the visibility of additional paid bills
     document.getElementById('showAllPaidBills').addEventListener('click', function () {
         const rows = document.querySelectorAll('.paid-bill-row.d-none');
-        rows.forEach(row => row.classList.remove('d-none')); // Show all rows
-        document.getElementById('hidePaidBills').classList.remove('d-none'); // Show Hide button
+        rows.forEach(row => row.classList.remove('d-none'));
+        document.getElementById('hidePaidBills').classList.remove('d-none');
         this.classList.add('d-none'); // Hide the Show All button
     });
 
     document.getElementById('hidePaidBills').addEventListener('click', function () {
         const rows = document.querySelectorAll('.paid-bill-row');
         rows.forEach((row, index) => {
-            if (index >= 5) row.classList.add('d-none'); // Hide additional rows
+            if (index >= 5) row.classList.add('d-none');
         });
-        document.getElementById('showAllPaidBills').classList.remove('d-none'); // Show Show All button
-        this.classList.add('d-none'); // Hide Hide button
+        document.getElementById('showAllPaidBills').classList.remove('d-none');
+        this.classList.add('d-none');
     });
 </script>
 {% endblock %}

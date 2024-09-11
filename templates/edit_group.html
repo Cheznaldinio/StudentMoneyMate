@@ -5,8 +5,6 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Edit Group</h2>
-
-    <!-- Group Details (Editable by manager only) -->
     <form action="{{ url_for('edit_group_details', group_id=group.group_id) }}" method="POST">
         <div class="mb-3">
             <label for="groupName" class="form-label">Group Name</label>
@@ -22,15 +20,12 @@
         <button type="submit" class="btn btn-primary">Save Changes</button>
         {% endif %}
     </form>
-
-    <!-- Group Members List -->
     <h4>Members</h4>
     <ul class="list-group mb-3">
         {% for member in group_members %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             {{ member.user_name }} ({{ member.email }})
             {% if member.user_id != group.manager_id %}
-                <!-- Manager can remove members, normal users can't -->
                 {% if is_manager %}
                 <form action="{{ url_for('remove_member', group_id=group.group_id, member_id=member.user_id) }}" method="POST" style="display:inline;" onsubmit="return confirmRemoveMember('{{ member.user_name }}');">
                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
@@ -42,8 +37,6 @@
         </li>
         {% endfor %}
     </ul>
-
-        <!-- Pending Invites List -->
     <h4>Pending Invites</h4>
     <table class="table">
         <thead>
@@ -57,7 +50,7 @@
             {% for invite in pending_invites %}
             <tr>
                 <td>{{ invite.sender.user_name }}</td>
-                <td>{{ invite.invitee_email }}</td>  <!-- Displaying invitee's email -->
+                <td>{{ invite.invitee_email }}</td>
                 <td>
                     {% if is_manager %}
                     <form action="{{ url_for('delete_invite', invite_id=invite.notif_id) }}" method="POST" onsubmit="return confirmDeleteInvite('{{ invite.invitee_email }}');">
@@ -69,9 +62,6 @@
             {% endfor %}
         </tbody>
     </table>
-
-
-    <!-- Invite New Members -->
     <h4>Invite New Members</h4>
     <form action="{{ url_for('invite_members', group_id=group.group_id) }}" method="POST">
         <div class="mb-3">
@@ -80,8 +70,6 @@
         </div>
         <button type="submit" class="btn btn-primary">Invite Members</button>
     </form>
-
-    <!-- Leave Group Button -->
     {% if is_manager %}
     <form action="{{ url_for('leave_group', group_id=group.group_id) }}" method="POST" onsubmit="return confirmLeaveGroup(true);">
         <button type="submit" class="btn btn-danger mt-4">Leave Group</button>

@@ -5,8 +5,6 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Create a New Bill</h2>
-
-    <!-- Create Bill Form -->
     <form action="{{ url_for('create_bill') }}" method="POST" class="needs-validation" novalidate>
         <!-- Bill Name -->
         <div class="mb-3">
@@ -14,15 +12,11 @@
             <input type="text" class="form-control" id="billName" name="bill_name" placeholder="Enter bill name" required>
             <div class="invalid-feedback">Please provide a bill name.</div>
         </div>
-
-        <!-- Bill Amount -->
         <div class="mb-3">
             <label for="billAmount" class="form-label">Bill Amount (Total)</label>
             <input type="number" step="0.01" class="form-control" id="billAmount" name="amount" placeholder="Enter bill amount" required>
             <div class="invalid-feedback">Please provide a valid amount.</div>
         </div>
-
-        <!-- Bill Type -->
         <div class="mb-3">
             <label for="billType" class="form-label">Bill Type</label>
             <select id="billType" name="bill_type" class="form-select" required>
@@ -32,15 +26,11 @@
             </select>
             <div class="invalid-feedback">Please select a bill type.</div>
         </div>
-
-        <!-- Due Date (Always visible) -->
         <div class="mb-3">
             <label for="dueDate" class="form-label">Due Date</label>
             <input type="date" class="form-control" id="dueDate" name="due_date" required>
             <div class="invalid-feedback">Please select a due date.</div>
         </div>
-
-        <!-- Group Selection -->
         <div class="mb-3">
             <label for="groupSelect" class="form-label">Select Group</label>
             <select id="groupSelect" name="group_id" class="form-select" required>
@@ -51,26 +41,18 @@
             </select>
             <div class="invalid-feedback">Please select a group.</div>
         </div>
-
-        <!-- Group Members (will show when a group is selected) -->
         <div class="mb-3">
             <h5>Group Members</h5>
             <ul id="groupMembers" class="list-group">
                 <li class="list-group-item">Select a group to view its members.</li>
             </ul>
         </div>
-
-        <!-- Recurring Bill Details (hidden by default) -->
         <div id="recurringDetails" class="mt-4" style="display:none;">
             <h4>Recurring Bill Details</h4>
-
-            <!-- Start Date -->
             <div class="mb-3">
                 <label for="startDate" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="startDate" name="start_date">
             </div>
-
-            <!-- Frequency -->
             <div class="mb-3">
                 <label for="frequency" class="form-label">Frequency</label>
                 <select id="frequency" name="frequency" class="form-select">
@@ -79,15 +61,11 @@
                     <option value="yearly">Yearly</option>
                 </select>
             </div>
-
-            <!-- End Date -->
             <div class="mb-3">
                 <label for="endDate" class="form-label">End Date</label>
                 <input type="date" class="form-control" id="endDate" name="end_date">
             </div>
         </div>
-
-        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary">Create Bill</button>
     </form>
 </div>

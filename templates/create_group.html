@@ -5,10 +5,9 @@
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-4"> <!-- Limit the width of the form -->
+        <div class="col-md-6 col-lg-4">
             <h2 class="mb-4 text-left">Create a Group</h2>
             <form id="makeGroupForm" action="{{ url_for('create_group') }}" method="POST" class="needs-validation" novalidate>
-                <!-- Split Type Selection -->
                 <div class="mb-3">
                     <label for="splitType" class="form-label">Select Type:</label>
                     <select id="splitType" name="splitType" class="form-select" required>
@@ -19,30 +18,23 @@
                     </select>
                     <div class="invalid-feedback">Please select a group type.</div>
                 </div>
-
-                <!-- Group Name Input -->
                 <div class="mb-3">
                     <label for="newGroupName" class="form-label">New Group Name:</label>
                     <input type="text" id="newGroupName" name="newGroupName" class="form-control" required>
                     <div class="invalid-feedback">Please provide a group name.</div>
                 </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="btn btn-primary w-100">Create Group</button> <!-- Full-width button -->
+                <button type="submit" class="btn btn-primary w-100">Create Group</button>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    // Bootstrap validation for forms
+
     (function () {
         'use strict'
-
-        // Fetch all the forms we want to apply custom Bootstrap validation styles to
         var forms = document.querySelectorAll('.needs-validation')
-
-        // Loop over them and prevent submission
         Array.prototype.slice.call(forms)
             .forEach(function (form) {
                 form.addEventListener('submit', function (event) {

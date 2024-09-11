@@ -18,24 +18,16 @@
         <tbody>
             {% for group in groups %}
             <tr>
-                <!-- Group name and type -->
                 <td>{{ group.group_name }}</td>
                 <td>{{ group.group_type | capitalize }}</td>
-
-                <!-- Manager info -->
                 <td>
                     {{ group.manager_name }}
                     {% if group.is_manager %}
                     <span class="badge bg-success">You</span>
                     {% endif %}
                 </td>
-
-                <!-- Number of members -->
                 <td>{{ group.members_count }}</td>
-
-                <!-- Info Button -->
                 <td>
-                    <!-- Info Group Button -->
                     <a href="{{ url_for('edit_group', group_id=group.group_id) }}" class="btn btn-outline-info btn-sm" title="Group Info">
                         <i class="fas fa-info-circle"></i> Info
                     </a>

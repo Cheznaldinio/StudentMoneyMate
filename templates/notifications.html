@@ -5,7 +5,6 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Notifications</h2>
-
     {% if notification_data %}
     <div class="table-responsive">
         <table class="table table-bordered table-striped text-center">
@@ -24,13 +23,9 @@
                 {% set notification = data.notification %}
                 {% set ledger_entry = data.ledger_entry %}
                 <tr class="{% if not notification.read %}table-warning{% endif %}">
-                    <!-- Notification Type -->
                     <td>{{ notification.notif_type }}</td>
-
-                    <!-- Notification Content -->
                     <td>{{ notification.content }}</td>
 
-                    <!-- Sender Info -->
                     <td>
                         {% if notification.sender_id %}
                         {{ notification.sender.user_name }}
@@ -39,7 +34,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- Bill/Group Info -->
                     <td>
                         {% if notification.bill_id %}
                         {{ notification.bill.bill_name }} (ID: {{ notification.bill_id }})
@@ -50,7 +44,6 @@
                         {% endif %}
                     </td>
 
-                    <!-- Read/Unread Status -->
                     <td>
                         {% if notification.read %}
                         <span class="badge bg-success">Read</span>
@@ -59,10 +52,8 @@
                         {% endif %}
                     </td>
 
-                    <!-- Actions -->
                     <td>
                         {% if notification.notif_type == 'payment_confirmation_request' and not notification.read %}
-                        <!-- Confirm/Deny buttons for payment confirmation -->
                         <form action="{{ url_for('confirm_payment', notif_id=notification.notif_id, ledger_id=ledger_entry.ledger_id) }}" method="POST" style="display:inline;">
                             <button type="submit" class="btn btn-success btn-sm">Confirm</button>
                         </form>
@@ -70,7 +61,7 @@
                             <button type="submit" class="btn btn-danger btn-sm">Deny</button>
                         </form>
                         {% elif notification.notif_type == 'group_invite' and not notification.read %}
-                        <!-- Accept/Deny buttons for group invites -->
+
                         <form action="{{ url_for('accept_invite', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
                             <button type="submit" class="btn btn-success btn-sm">Accept</button>
                         </form>
@@ -78,7 +69,7 @@
                             <button type="submit" class="btn btn-danger btn-sm">Deny</button>
                         </form>
                         {% elif not notification.read %}
-                        <!-- Mark as read button for other notifications -->
+
                         <form action="{{ url_for('mark_as_read', notif_id=notification.notif_id) }}" method="POST" style="display:inline;">
                             <button type="submit" class="btn btn-secondary btn-sm">Mark as Read</button>
                         </form>

@@ -5,24 +5,17 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Edit Bill: {{ bill.bill_name }}</h2>
-
-    <!-- Edit Bill Form -->
     <form action="{{ url_for('edit_bill', bill_id=bill.bill_id) }}" method="POST" class="needs-validation" novalidate>
-        <!-- Bill Name -->
         <div class="mb-3">
             <label for="billName" class="form-label">Bill Name</label>
             <input type="text" class="form-control" id="billName" name="bill_name" value="{{ bill.bill_name }}" required>
             <div class="invalid-feedback">Please provide a bill name.</div>
         </div>
-
-        <!-- Bill Amount -->
         <div class="mb-3">
             <label for="billAmount" class="form-label">Bill Amount</label>
             <input type="number" step="0.01" class="form-control" id="billAmount" name="amount" value="{{ bill.amount }}" required>
             <div class="invalid-feedback">Please provide a valid amount.</div>
         </div>
-
-        <!-- Bill Type -->
         <div class="mb-3">
             <label for="billType" class="form-label">Bill Type</label>
             <select id="billType" name="bill_type" class="form-select" required>
@@ -31,8 +24,6 @@
             </select>
             <div class="invalid-feedback">Please select a bill type.</div>
         </div>
-
-        <!-- Group Selection -->
         <div class="mb-3">
             <label for="groupSelect" class="form-label">Select Group</label>
             <select id="groupSelect" name="group_id" class="form-select" required>
@@ -42,26 +33,18 @@
             </select>
             <div class="invalid-feedback">Please select a group.</div>
         </div>
-
-        <!-- Group Members (will show when a group is selected) -->
         <div class="mb-3">
             <h5>Group Members</h5>
             <ul id="groupMembers" class="list-group">
                 <li class="list-group-item">Select a group to view its members.</li>
             </ul>
         </div>
-
-        <!-- Recurring Bill Details (hidden if not recurring) -->
         <div id="recurringDetails" class="mt-4" {% if bill.bill_type != 'recurring' %} style="display:none;" {% endif %}>
             <h4>Recurring Bill Details</h4>
-
-            <!-- Start Date -->
             <div class="mb-3">
                 <label for="startDate" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="startDate" name="start_date" value="{{ bill.start_date.strftime('%Y-%m-%d') if bill.start_date else '' }}">
             </div>
-
-            <!-- Frequency -->
             <div class="mb-3">
                 <label for="frequency" class="form-label">Frequency</label>
                 <select id="frequency" name="frequency" class="form-select">
@@ -70,21 +53,16 @@
                     <option value="yearly" {% if bill.frequency == 'yearly' %} selected {% endif %}>Yearly</option>
                 </select>
             </div>
-
-            <!-- End Date -->
             <div class="mb-3">
                 <label for="endDate" class="form-label">End Date</label>
                 <input type="date" class="form-control" id="endDate" name="end_date" value="{{ bill.end_date.strftime('%Y-%m-%d') if bill.end_date else '' }}">
             </div>
         </div>
-
-        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary">Save Changes</button>
     </form>
 </div>
 
 <script>
-    // Toggle visibility of recurring bill fields
     document.getElementById('billType').addEventListener('change', function () {
         const recurringDetails = document.getElementById('recurringDetails');
         if (this.value === 'recurring') {
@@ -93,8 +71,6 @@
             recurringDetails.style.display = 'none';
         }
     });
-
-    // Function to fetch group members and update the group members list
     function fetchGroupMembers(groupId) {
         fetch(`/get_group_members/${groupId}`)
             .then(response => response.json())
@@ -117,15 +93,10 @@
                 const groupMembersList = document.getElementById('groupMembers');
                 groupMembersList.innerHTML = '<li class="list-group-item">Error fetching members.</li>';
             });
-    }
-
-    // Fetch group members when a group is selected
     document.getElementById('groupSelect').addEventListener('change', function () {
         const groupId = this.value;
         fetchGroupMembers(groupId);
     });
-
-    // Trigger group member fetching on page load if a group is preselected
     document.addEventListener('DOMContentLoaded', function () {
         const preselectedGroup = document.getElementById('groupSelect').value;
         if (preselectedGroup) {

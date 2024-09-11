@@ -5,19 +5,14 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Account Manager</h2>
-
-    <!-- View Section -->
     <div id="view-section">
-        <!-- Profile Section -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="profile-section">
-                    <!-- Display the user's profile picture if uploaded, otherwise show a default image -->
                     <img src="{{ url_for('static', filename='profile_pictures/' + user.user_id + '.png') }}" class="img-thumbnail" alt="Profile Image" onerror="this.src='{{ url_for('static', filename='profile_pictures/default.png') }}'">
                 </div>
             </div>
             <div class="col-md-8">
-                <!-- Personal Details -->
                 <div class="details-section">
                     <h3>Personal Details</h3>
                     <p><strong>Name:</strong> {{ user.user_name }}</p>
@@ -29,8 +24,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Bank Details Section -->
         <div class="details-section mt-4">
             <h3>Bank Details</h3>
             {% if bank_details %}
@@ -46,7 +39,6 @@
         </div>
     </div>
 
-    <!-- Edit Section -->
     <form method="POST" action="{{ url_for('update_account') }}" enctype="multipart/form-data">
         <div id="edit-section" class="edit-section" style="display:none;">
             <div class="row mb-4">
@@ -81,7 +73,6 @@
         </div>
     </form>
 
-    <!-- Edit Bank Details Section -->
     <form method="POST" action="{{ url_for('update_bank_details') }}">
         <div id="edit-bank-section" class="edit-section" style="display:none;">
             <div class="row mb-4">
@@ -109,7 +100,6 @@
     </form>
 </div>
 
-<!-- JavaScript to toggle edit sections -->
 <script>
     function toggleEdit() {
         var editSection = document.getElementById('edit-section');
@@ -135,9 +125,8 @@
         }
     }
 
-    // Auto-formatting for Sort Code
     document.getElementById('sort_code').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, '').slice(0, 6); // Remove non-digit characters
+        let value = e.target.value.replace(/\D/g, '').slice(0, 6);
         if (value.length >= 2) value = value.slice(0, 2) + '-' + value.slice(2);
         if (value.length >= 5) value = value.slice(0, 5) + '-' + value.slice(5);
         e.target.value = value;
@@ -145,7 +134,7 @@
 
     // Restrict account number to 8 digits
     document.getElementById('account_number').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, '').slice(0, 8); // Remove non-digit characters and limit to 8 digits
+        let value = e.target.value.replace(/\D/g, '').slice(0, 8);
         e.target.value = value;
     });
 </script>
