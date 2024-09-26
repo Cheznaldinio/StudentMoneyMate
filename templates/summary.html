@@ -13,25 +13,29 @@
         </div>
     </div>
 
+    <!-- Summary Cards -->
     <div class="row mb-4">
+        <!-- Total Spend -->
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-success">
                 <div class="card-body">
                     <h5 class="card-title">Total Spend</h5>
                     <p class="card-text">£{{ total_spent | round(2) }}</p>
                 </div>
             </div>
         </div>
+        <!-- Projected Spend -->
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-warning">
                 <div class="card-body">
                     <h5 class="card-title">Projected Spend</h5>
                     <p class="card-text">£{{ projected_spend | round(2) }}</p>
                 </div>
             </div>
         </div>
+        <!-- Outstanding Balance -->
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-danger">
                 <div class="card-body">
                     <h5 class="card-title">Outstanding Balance</h5>
                     <p class="card-text">£{{ outstanding_balance | round(2) }}</p>
@@ -40,11 +44,18 @@
         </div>
     </div>
 
+    <!-- Spending Overview Chart -->
     <div class="chart mb-4">
         <h4>Spending Overview</h4>
         <canvas id="spendingChart" style="width: 100%; height: 400px;"></canvas>
     </div>
 
+    <!-- Add Data Button -->
+    <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#addDataModal">
+        Add Data
+    </button>
+
+    <!-- Bills Summary Table -->
     <div class="table-responsive mb-4">
         <h4>Bills Summary</h4>
         <table class="table table-bordered table-striped">
@@ -69,6 +80,7 @@
         </table>
     </div>
 
+    <!-- Money Owed Table -->
     <div class="table-responsive mb-4">
         <h4>Money Owed</h4>
         <table class="table table-bordered">
@@ -89,48 +101,177 @@
         </table>
     </div>
 
+    <!-- Add Data Modal -->
+    <div class="modal fade" id="addDataModal" tabindex="-1" aria-labelledby="addDataModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <!-- Modal Title -->
+                    <h5 class="modal-title" id="addDataModalLabel">Add Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('add_bank_data') }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="account_type" class="form-label">Pick Account</label>
+                            <select id="account_type" name="account_type" class="form-select" onchange="toggleAccountNameInput()">
+                                <option value="existing">Existing Account</option>
+                                <option value="new">New Account</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="existingAccountField">
+                            <label for="existing_account_id" class="form-label">Select Existing Account</label>
+                            <select id="existing_account_id" name="existing_account_id" class="form-select">
+                                <!-- Options will be populated dynamically via JS -->
+                            </select>
+                        </div>
+                        <div class="mb-3" id="newAccountField" style="display: none;">
+                            <label for="account_name" class="form-label">Account Name</label>
+                            <input type="text" id="account_name" name="account_name" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount (£)</label>
+                            <input type="number" step="0.01" id="amount" name="amount" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <!-- Modal Footer -->
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </div>
 
+<!-- Include necessary JavaScript libraries -->
+<!-- Include jQuery (required for Bootstrap's JavaScript plugins) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Include Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Include Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Include date adapter for Chart.js (using date-fns) -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
 <script>
+    // Prepare the datasets for paid, unpaid, and each bank account
+    const datasets = [
+        {
+            label: 'Paid',
+            data: {{ paid_data | tojson }},
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+        },
+        {
+            label: 'Unpaid',
+            data: {{ unpaid_data | tojson }},
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+        }
+    ];
+
+    {% for account_name, data_points in bank_account_data.items() %}
+    datasets.push({
+        label: '{{ account_name }}',
+        data: {{ data_points | tojson }},
+        borderColor: 'rgba({{ (loop.index * 60) % 255 }}, {{ ((loop.index + 1) * 90) % 255 }}, {{ ((loop.index + 2) * 120) % 255 }}, 1)',
+        backgroundColor: 'rgba({{ (loop.index * 60) % 255 }}, {{ ((loop.index + 1) * 90) % 255 }}, {{ ((loop.index + 2) * 120) % 255 }}, 0.2)',
+        borderWidth: 2,
+        fill: false,
+        tension: 0.1
+    });
+    {% endfor %}
+
     const ctx = document.getElementById('spendingChart').getContext('2d');
     const spendingChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ months | tojson }},
-            datasets: [{
-                label: 'Past Spend',
-                data: {{ past_spend | tojson }},
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                fill: false
-            }, {
-                label: 'Future Spend',
-                data: {{ future_spend | tojson }},
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 2,
-                fill: false
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
             scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        parser: 'yyyy-MM-dd',  // Added parser for date-fns
+                        unit: 'month',
+                        tooltipFormat: 'dd MMM yyyy',
+                        displayFormats: {
+                            month: 'MMM yyyy'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 12
+                    }
+                },
                 y: {
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Amount (£)'
                     }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Months'
-                    }
+                legend: {
+                    position: 'top'
                 }
             }
         }
     });
+
+    // Fetch bank accounts on modal open
+    $(document).ready(function() {
+        $('#addDataModal').on('show.bs.modal', function() {
+            $.getJSON('{{ url_for("get_bank_accounts") }}', function(data) {
+                let accountSelect = $('#existing_account_id');
+                accountSelect.empty();
+                data.accounts.forEach(function(account) {
+                    accountSelect.append(new Option(account.account_name, account.bank_account_id));
+                });
+            });
+        });
+    });
+
+    function toggleAccountNameInput() {
+        let accountType = document.getElementById('account_type').value;
+        let accountNameInput = document.getElementById('account_name');
+        let existingAccountField = document.getElementById('existingAccountField');
+        let newAccountField = document.getElementById('newAccountField');
+
+        if (accountType === 'new') {
+            newAccountField.style.display = 'block';
+            existingAccountField.style.display = 'none';
+            accountNameInput.disabled = false;
+        } else {
+            newAccountField.style.display = 'none';
+            existingAccountField.style.display = 'block';
+            accountNameInput.disabled = true;
+        }
+    }
 </script>
 {% endblock %}

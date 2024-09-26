@@ -10,12 +10,12 @@
         <div class="mb-3">
             <label for="billName" class="form-label">Bill Name</label>
             <input type="text" class="form-control" id="billName" name="bill_name" placeholder="Enter bill name" required>
-            <div class="invalid-feedback">Please provide a bill name.</div>
+            <div class="invalid-feedback">You need a bill name</div>
         </div>
         <div class="mb-3">
             <label for="billAmount" class="form-label">Bill Amount (Total)</label>
             <input type="number" step="0.01" class="form-control" id="billAmount" name="amount" placeholder="Enter bill amount" required>
-            <div class="invalid-feedback">Please provide a valid amount.</div>
+            <div class="invalid-feedback">You need a valid amount.</div>
         </div>
         <div class="mb-3">
             <label for="billType" class="form-label">Bill Type</label>
@@ -24,12 +24,12 @@
                 <option value="one_off">One-Off Payment</option>
                 <option value="recurring">Recurring Payment</option>
             </select>
-            <div class="invalid-feedback">Please select a bill type.</div>
+            <div class="invalid-feedback">You need a bill type.</div>
         </div>
-        <div class="mb-3">
+        <div class="mb-3" id="dueDateContainer">
             <label for="dueDate" class="form-label">Due Date</label>
             <input type="date" class="form-control" id="dueDate" name="due_date" required>
-            <div class="invalid-feedback">Please select a due date.</div>
+            <div class="invalid-feedback">You need a due date.</div>
         </div>
         <div class="mb-3">
             <label for="groupSelect" class="form-label">Select Group</label>
@@ -39,12 +39,12 @@
                 <option value="{{ group.group_id }}">{{ group.group_name }}</option>
                 {% endfor %}
             </select>
-            <div class="invalid-feedback">Please select a group.</div>
+            <div class="invalid-feedback">You need a group.</div>
         </div>
         <div class="mb-3">
             <h5>Group Members</h5>
             <ul id="groupMembers" class="list-group">
-                <li class="list-group-item">Select a group to view its members.</li>
+                <li class="list-group-item">Click a group to view its members.</li>
             </ul>
         </div>
         <div id="recurringDetails" class="mt-4" style="display:none;">
@@ -71,26 +71,26 @@
 </div>
 
 <script>
-    // Toggle visibility of recurring bill fields
     document.getElementById('billType').addEventListener('change', function () {
         const recurringDetails = document.getElementById('recurringDetails');
+        const dueDateContainer = document.getElementById('dueDateContainer');
         if (this.value === 'recurring') {
             recurringDetails.style.display = 'block';
+            dueDateContainer.style.display = 'none'; // Hide the Due Date field when Recurring is selected
         } else {
             recurringDetails.style.display = 'none';
+            dueDateContainer.style.display = 'block'; // Show the Due Date field when One-Off is selected
         }
     });
 
-    // Fetch group members when a group is selected
     document.getElementById('groupSelect').addEventListener('change', function () {
         const groupId = this.value;
 
-        // Make an AJAX request to get group members
         fetch(`/get_group_members/${groupId}`)
             .then(response => response.json())
             .then(data => {
                 const groupMembersList = document.getElementById('groupMembers');
-                groupMembersList.innerHTML = ''; // Clear previous members
+                groupMembersList.innerHTML = '';
                 if (data.members.length > 0) {
                     data.members.forEach(member => {
                         const listItem = document.createElement('li');

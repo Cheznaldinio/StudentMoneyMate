@@ -184,7 +184,7 @@
         const rows = document.querySelectorAll('.future-bill-row.d-none');
         rows.forEach(row => row.classList.remove('d-none'));
         document.getElementById('hideFutureBills').classList.remove('d-none');
-        this.classList.add('d-none'); // Hide the Show All button
+        this.classList.add('d-none');
     });
 
     document.getElementById('hideFutureBills').addEventListener('click', function () {
@@ -200,7 +200,7 @@
         const rows = document.querySelectorAll('.paid-bill-row.d-none');
         rows.forEach(row => row.classList.remove('d-none'));
         document.getElementById('hidePaidBills').classList.remove('d-none');
-        this.classList.add('d-none'); // Hide the Show All button
+        this.classList.add('d-none');
     });
 
     document.getElementById('hidePaidBills').addEventListener('click', function () {

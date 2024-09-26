@@ -111,3 +111,28 @@ class BankDetails(db.Model):
 
     def __str__(self):
         return f"BankDetails: {self.full_name}, Sort Code: {self.sort_code}, Account Number: {self.account_number}"
+
+class BankUser(db.Model):
+    __tablename__ = 'bank_user'
+    bank_account_id = db.Column(String(255), primary_key=True, nullable=False)
+    account_name = db.Column(String(255), nullable=False)
+    user_id = db.Column(String(255), ForeignKey('users.user_id'), nullable=False)
+
+    user = db.relationship('Users', backref='bank_users')
+
+    def __str__(self):
+        return f"BankUser: {self.bank_account_id}, {self.account_name}, {self.user_id}"
+
+
+class BankAccountData(db.Model):
+    __tablename__ = 'bank_account_data'
+    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    bank_account_id = db.Column(String(255), ForeignKey('bank_user.bank_account_id'), nullable=False)
+    amount = db.Column(Float, nullable=False)
+    timestamp = db.Column(TIMESTAMP, default=db.func.current_timestamp())
+
+    bank_account = db.relationship('BankUser', backref='bank_account_data')
+
+    def __str__(self):
+        return f"BankAccountData: {self.bank_account_id}, {self.amount}, {self.timestamp}"
+

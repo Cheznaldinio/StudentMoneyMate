@@ -1,6 +1,6 @@
 import random
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, make_response, g
-from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications, BankDetails
+from databases import db, Users, Groups, Ledger, Bills, Config, GroupMembers, Notifications, BankDetails, BankUser, BankAccountData
 import datetime
 from datetime import datetime, timedelta
 from services.group_services import GroupService
@@ -15,7 +15,6 @@ app.config.from_object(Config)
 app.secret_key = 'your_secret_key'
 db.init_app(app)
 UPLOAD_FOLDER = os.path.join(basedir, 'static/profile_pictures')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 with app.app_context():
     db.create_all()
@@ -166,7 +165,7 @@ def confirm_payment(notif_id, ledger_id):
     ledger_entry.status = 'paid'
     ledger_entry.paid_date = datetime.now()
     db.session.commit()
-    notification_message = f"{session['user_name']} has confirmed your payment for the bill '{ledger_entry.bill_name}'."
+    notification_message = f"{session['user_name']} has confirmed payment for bill '{ledger_entry.bill_name}'."
     new_notification = Notifications(
         user_id=ledger_entry.user_id,  # Notify the original payer
         sender_id=user_id,  # Bill creator
@@ -189,7 +188,7 @@ def deny_payment(notif_id, ledger_id):
     ledger_entry = Ledger.query.filter_by(bill_id=notification.bill_id, status='confirming').first()
     ledger_entry.status = 'owe'
     db.session.commit()
-    notification_message = f"{session['user_name']} has denied your payment for the bill '{ledger_entry.bill_name}'."
+    notification_message = f"{session['user_name']} has denied payment for bill '{ledger_entry.bill_name}'."
     new_notification = Notifications(user_id=ledger_entry.user_id, sender_id=user_id,
                                      bill_id=ledger_entry.bill_id, notif_type="payment_denied",
                                      content=notification_message, read=False)
@@ -207,7 +206,7 @@ def pay_bill(ledger_id):
     ledger_entry.status = 'confirming'
     ledger_entry.updated_at = datetime.now()
     bill = Bills.query.get(ledger_entry.bill_id)
-    notification_message = f"{session['user_name']} is trying to pay '{bill.bill_name}'. Please confirm or deny it."
+    notification_message = f"{session['user_name']} is trying to pay '{bill.bill_name}'. Please confirm or deny it"
     new_notification = Notifications(user_id=bill.created_by, sender_id=user_id,
                                      bill_id=bill.bill_id,
                                      notif_type="payment_confirmation_request",
@@ -398,29 +397,73 @@ def create_bill():
     user_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id).filter(GroupMembers.user_id == user_id).all()
     return render_template('create_bill.html', user_groups=user_groups)
 
+from collections import defaultdict
+from datetime import datetime, timedelta
+from flask import render_template, session
+
+
 @app.route('/summary')
 def summary():
     user_id = session.get('user_id')
     checklogin()
     user = Users.query.get(user_id)
+
+    # Fetch ledger entries for the user
     ledger_entries = Ledger.query.filter_by(user_id=user_id).all()
+
+    # Calculate total spent and outstanding balance
     total_spent = sum(entry.amount for entry in ledger_entries if entry.status == 'paid')
     outstanding_balance = sum(entry.amount for entry in ledger_entries if entry.status == 'owe')
     projected_spend = outstanding_balance + total_spent
-    months = []
-    past_spend = []
-    future_spend = []
-    now = datetime.now()
+
+    # Initialize the paid and unpaid data points (grouped by month, using the first of the month)
+    paid_data = defaultdict(float)
+    unpaid_data = defaultdict(float)
+
+    # Aggregate ledger entries into paid/unpaid based on the month, use first day of month as x-axis label
     for entry in ledger_entries:
-        month_name = entry.due_date.strftime('%B')
-        if month_name not in months:
-            months.append(month_name)
-        if entry.due_date < now:
-            past_spend.append(entry.amount)
+        if entry.status == 'paid':
+            # Ensure date format is consistent ('YYYY-MM-DD')
+            month_year = entry.paid_date.replace(day=1).strftime('%Y-%m-%d')
+            paid_data[month_year] += entry.amount
         else:
-            future_spend.append(entry.amount)
+            month_year = entry.due_date.replace(day=1).strftime('%Y-%m-%d')
+            unpaid_data[month_year] += entry.amount
+
+    # Convert the defaultdict to a list of objects for Chart.js
+    paid_data = [{'x': month, 'y': amount} for month, amount in sorted(paid_data.items())]
+    unpaid_data = [{'x': month, 'y': amount} for month, amount in sorted(unpaid_data.items())]
+
+    # Bank account data points (using exact dates, no grouping by month)
+    bank_accounts = BankUser.query.filter_by(user_id=user_id).all()
+    bank_account_data = {}
+
+    for account in bank_accounts:
+        account_data_entries = BankAccountData.query.filter_by(
+            bank_account_id=account.bank_account_id
+        ).order_by(BankAccountData.timestamp).all()
+        data_points = [
+            {'x': data_entry.timestamp.strftime('%Y-%m-%d'), 'y': data_entry.amount}
+            for data_entry in account_data_entries
+        ]
+        bank_account_data[account.account_name] = data_points
+
+    # Fetch money owed entries
     money_owed = Ledger.query.filter_by(user_id=user_id, status='owe').all()
-    return render_template('summary.html', user=user, total_spent=total_spent, outstanding_balance=outstanding_balance, projected_spend=projected_spend, ledger_entries=ledger_entries, months=months, past_spend=past_spend, future_spend=future_spend, money_owed=money_owed)
+
+    return render_template(
+        'summary.html',
+        user=user,
+        total_spent=total_spent,
+        outstanding_balance=outstanding_balance,
+        projected_spend=projected_spend,
+        ledger_entries=ledger_entries,
+        paid_data=paid_data,
+        unpaid_data=unpaid_data,
+        bank_account_data=bank_account_data,
+        money_owed=money_owed
+    )
+
 
 @app.route('/account', methods=['GET'])
 def account():
@@ -697,6 +740,52 @@ def update_bank_details():
     db.session.commit()
     flash("bank details updated", "success")
     return redirect(url_for('account'))
+
+
+@app.route('/get_bank_accounts')
+def get_bank_accounts():
+    user_id = session.get('user_id')
+    bank_accounts = BankUser.query.filter_by(user_id=user_id).all()
+    accounts = [
+        {
+            'account_name': account.account_name,
+            'bank_account_id': account.bank_account_id
+        } for account in bank_accounts
+    ]
+    return jsonify({'accounts': accounts})
+
+
+
+@app.route('/add_bank_data', methods=['POST'])
+def add_bank_data():
+    user_id = session.get('user_id')
+    checklogin()
+    account_type = request.form['account_type']  # 'new' or 'existing'
+    amount = request.form.get('amount')
+
+    if account_type == 'new':
+        account_name = request.form.get('account_name')
+        if not account_name:
+            flash('Please enter an account name for the new account.', 'danger')
+            return redirect(url_for('summary'))
+        # Create new bank account
+        new_bank_account_id = MakeHex('bank')
+        new_bank_user = BankUser(bank_account_id=new_bank_account_id, account_name=account_name,
+                                 user_id=user_id)
+        db.session.add(new_bank_user)
+        bank_account_id = new_bank_account_id
+    else:
+        bank_account_id = request.form.get('existing_account_id')
+        if not bank_account_id:
+            flash('Please select an existing account.', 'danger')
+            return redirect(url_for('summary'))
+
+    new_data_entry = BankAccountData(bank_account_id=bank_account_id, amount=float(amount))
+    db.session.add(new_data_entry)
+    db.session.commit()
+
+    flash('Bank data added successfully', 'success')
+    return redirect(url_for('summary'))
 
 if __name__ == '__main__':
     app.run(debug=True)

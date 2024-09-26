@@ -87,9 +87,6 @@ class GroupService:
 
     @staticmethod
     def get_group_details(user_id):
-        """
-        Retrieves details of the groups (both flat and non-flat) that the user is a part of.
-        """
         all_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id) \
             .filter(GroupMembers.user_id == user_id).all()
 
