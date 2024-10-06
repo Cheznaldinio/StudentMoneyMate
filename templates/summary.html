@@ -69,7 +69,7 @@
             </thead>
             <tbody>
                 {% for ledger_entry in ledger_entries %}
-                <tr>
+                <tr class="bills-summary-row {% if loop.index0 >= 5 %}d-none{% endif %}">
                     <td>{{ ledger_entry.bill_name }}</td>
                     <td>£{{ ledger_entry.amount | round(2) }}</td>
                     <td>{{ "Paid" if ledger_entry.status == 'paid' else "Owe" }}</td>
@@ -78,28 +78,33 @@
                 {% endfor %}
             </tbody>
         </table>
+        <button id="showAllBillsSummary" class="btn btn-primary {% if ledger_entries|length <= 5 %}d-none{% endif %}">Show More</button>
+        <button id="hideBillsSummary" class="btn btn-primary d-none">Hide</button>
     </div>
 
-    <!-- Money Owed Table -->
+        <!-- Money Owed Table -->
     <div class="table-responsive mb-4">
         <h4>Money Owed</h4>
-        <table class="table table-bordered">
+        <table class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
                     <th>Owed To</th>
-                    <th>Amount</th>
+                    <th>Total Amount</th>
                 </tr>
             </thead>
             <tbody>
                 {% for owed in money_owed %}
-                <tr>
-                    <td>{{ owed.creditor_name }}</td>
-                    <td>£{{ owed.amount | round(2) }}</td>
+                <tr class="money-owed-row {% if loop.index0 >= 5 %}d-none{% endif %}">
+                    <td>{{ owed[0] }}</td> <!-- Creditor name -->
+                    <td>£{{ owed[1] | round(2) }}</td> <!-- Total amount owed -->
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        <button id="showAllMoneyOwed" class="btn btn-primary {% if money_owed|length <= 5 %}d-none{% endif %}">Show More</button>
+        <button id="hideMoneyOwed" class="btn btn-primary d-none">Hide</button>
     </div>
+
 
     <!-- Add Data Modal -->
     <div class="modal fade" id="addDataModal" tabindex="-1" aria-labelledby="addDataModalLabel" aria-hidden="true">
@@ -147,13 +152,9 @@
 </div>
 
 <!-- Include necessary JavaScript libraries -->
-<!-- Include jQuery (required for Bootstrap's JavaScript plugins) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- Include Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Include Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Include date adapter for Chart.js (using date-fns) -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 
 <script>
@@ -200,21 +201,23 @@
         options: {
             responsive: true,
             interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
+                mode: 'nearest',  // Ensure only the nearest point is highlighted
+                axis: 'x',        // Interaction still works based on the x-axis
+                intersect: false  // Ensures that only points directly intersecting with the cursor are shown
             },
             scales: {
                 x: {
                     type: 'time',
                     time: {
-                        parser: 'yyyy-MM-dd',  // Added parser for date-fns
+                        parser: 'yyyy-MM-dd',
                         unit: 'month',
                         tooltipFormat: 'dd MMM yyyy',
                         displayFormats: {
                             month: 'MMM yyyy'
                         }
                     },
+                    min: '{{ start_date }}',  // 6 months before current date
+                    max: '{{ end_date }}',    // 6 months after current date
                     title: {
                         display: true,
                         text: 'Date'
@@ -234,8 +237,14 @@
             },
             plugins: {
                 tooltip: {
-                    mode: 'index',
-                    intersect: false
+                    mode: 'nearest',   // Show the tooltip for the nearest individual point
+                    intersect: true,   // Tooltip only shows when cursor directly intersects with a point
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            // Customize the tooltip to show the dataset label and the corresponding value
+                            return tooltipItem.dataset.label + ': £' + tooltipItem.raw.y.toFixed(2);
+                        }
+                    }
                 },
                 legend: {
                     position: 'top'
@@ -243,6 +252,7 @@
             }
         }
     });
+
 
     // Fetch bank accounts on modal open
     $(document).ready(function() {
@@ -273,5 +283,28 @@
             accountNameInput.disabled = true;
         }
     }
+
+    // JavaScript for Show More/Hide functionality
+    function toggleRows(buttonShow, buttonHide, rowClass) {
+        document.getElementById(buttonShow).addEventListener('click', function () {
+            const rows = document.querySelectorAll('.' + rowClass + '.d-none');
+            rows.forEach(row => row.classList.remove('d-none'));
+            document.getElementById(buttonHide).classList.remove('d-none');
+            this.classList.add('d-none');
+        });
+
+        document.getElementById(buttonHide).addEventListener('click', function () {
+            const rows = document.querySelectorAll('.' + rowClass);
+            rows.forEach((row, index) => {
+                if (index >= 5) row.classList.add('d-none');
+            });
+            document.getElementById(buttonShow).classList.remove('d-none');
+            this.classList.add('d-none');
+        });
+    }
+
+    // Apply the toggle functionality to the bills summary and money owed tables
+    toggleRows('showAllBillsSummary', 'hideBillsSummary', 'bills-summary-row');
+    toggleRows('showAllMoneyOwed', 'hideMoneyOwed', 'money-owed-row');
 </script>
 {% endblock %}

@@ -6,6 +6,8 @@
 <div class="container mt-5">
     <h2>Hello, {{ user.user_name }}!</h2>
     <p>Welcome back to Student Money Mate.</p>
+
+    <!-- Current Amounts Due (within 2 weeks) -->
     <div class="card mt-5">
         <div class="card-header bg-danger text-white">
             Current Amounts Due (within 2 weeks)
@@ -25,7 +27,7 @@
                     </thead>
                     <tbody>
                         {% for bill in current_bills %}
-                        <tr>
+                        <tr class="current-bill-row {% if loop.index0 >= 5 %}d-none{% endif %}">
                             <td>{{ bill.bill_name }}</td>
                             <td>{{ bill.group_name }}</td>
                             <td>£{{ '%.2f' % bill.amount }}</td>
@@ -40,11 +42,15 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <button id="showAllCurrentBills" class="btn btn-primary {% if current_bills|length <= 5 %}d-none{% endif %}">Show More</button>
+                <button id="hideCurrentBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
                 <p class="text-muted">You have no current bills due within the next 2 weeks.</p>
             {% endif %}
         </div>
     </div>
+
+    <!-- Upcoming Bills (due in the next month) -->
     <div class="card mt-4">
         <div class="card-header bg-warning">
             Upcoming Bills (due in the next month)
@@ -64,7 +70,7 @@
                     </thead>
                     <tbody>
                         {% for bill in upcoming_bills %}
-                        <tr>
+                        <tr class="upcoming-bill-row {% if loop.index0 >= 5 %}d-none{% endif %}">
                             <td>{{ bill.bill_name }}</td>
                             <td>{{ bill.group_name }}</td>
                             <td>£{{ '%.2f' % bill.amount }}</td>
@@ -79,11 +85,15 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <button id="showAllUpcomingBills" class="btn btn-primary {% if upcoming_bills|length <= 5 %}d-none{% endif %}">Show More</button>
+                <button id="hideUpcomingBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
                 <p class="text-muted">You have no upcoming bills due within the next month.</p>
             {% endif %}
         </div>
     </div>
+
+    <!-- Recently Paid Bills -->
     <div class="card mt-4">
         <div class="card-header bg-success text-white">
             Recently Paid Bills
@@ -112,13 +122,15 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                <button id="showAllPaidBills" class="btn btn-primary">Show All</button>
+                <button id="showAllPaidBills" class="btn btn-primary {% if paid_bills|length <= 5 %}d-none{% endif %}">Show More</button>
                 <button id="hidePaidBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
                 <p class="text-muted">You have not paid any bills recently.</p>
             {% endif %}
         </div>
     </div>
+
+    <!-- Future Bills (>1 month away) -->
     <div class="card mt-4">
         <div class="card-header bg-info text-white">
             Future Bills (>1 month away)
@@ -151,65 +163,41 @@
                             </td>
                         </tr>
                         {% endfor %}
-
-                        {% for bill in all_future_bills %}
-                        <tr class="future-bill-row d-none">
-                            <td>{{ bill.bill_name }}</td>
-                            <td>{{ bill.group_name }}</td>
-                            <td>£{{ '%.2f' % bill.amount }}</td>
-                            <td>{{ bill.due_date.strftime('%d %b %Y') }}</td>
-                            <td>{{ bill.creditor_name }}</td>
-                            <td>
-                                <form action="{{ url_for('pay_bill', ledger_id=bill.ledger_id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="btn btn-success btn-sm">Pay Bill</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
                     </tbody>
                 </table>
-                <button id="showAllFutureBills" class="btn btn-primary">Show All</button>
+                <button id="showAllFutureBills" class="btn btn-primary {% if future_bills|length <= 5 %}d-none{% endif %}">Show More</button>
                 <button id="hideFutureBills" class="btn btn-primary d-none">Hide</button>
             {% else %}
                 <p class="text-muted">You have no future bills due more than 1 month away.</p>
             {% endif %}
         </div>
     </div>
-
-
 </div>
 
+<!-- JavaScript for Show More/Hide functionality -->
 <script>
-    document.getElementById('showAllFutureBills').addEventListener('click', function () {
-        const rows = document.querySelectorAll('.future-bill-row.d-none');
-        rows.forEach(row => row.classList.remove('d-none'));
-        document.getElementById('hideFutureBills').classList.remove('d-none');
-        this.classList.add('d-none');
-    });
-
-    document.getElementById('hideFutureBills').addEventListener('click', function () {
-        const rows = document.querySelectorAll('.future-bill-row');
-        rows.forEach((row, index) => {
-            if (index >= 5) row.classList.add('d-none');
+    function toggleRows(buttonShow, buttonHide, rowClass) {
+        document.getElementById(buttonShow).addEventListener('click', function () {
+            const rows = document.querySelectorAll('.' + rowClass + '.d-none');
+            rows.forEach(row => row.classList.remove('d-none'));
+            document.getElementById(buttonHide).classList.remove('d-none');
+            this.classList.add('d-none');
         });
-        document.getElementById('showAllFutureBills').classList.remove('d-none');
-        this.classList.add('d-none');
-    });
 
-    document.getElementById('showAllPaidBills').addEventListener('click', function () {
-        const rows = document.querySelectorAll('.paid-bill-row.d-none');
-        rows.forEach(row => row.classList.remove('d-none'));
-        document.getElementById('hidePaidBills').classList.remove('d-none');
-        this.classList.add('d-none');
-    });
-
-    document.getElementById('hidePaidBills').addEventListener('click', function () {
-        const rows = document.querySelectorAll('.paid-bill-row');
-        rows.forEach((row, index) => {
-            if (index >= 5) row.classList.add('d-none');
+        document.getElementById(buttonHide).addEventListener('click', function () {
+            const rows = document.querySelectorAll('.' + rowClass);
+            rows.forEach((row, index) => {
+                if (index >= 5) row.classList.add('d-none');
+            });
+            document.getElementById(buttonShow).classList.remove('d-none');
+            this.classList.add('d-none');
         });
-        document.getElementById('showAllPaidBills').classList.remove('d-none');
-        this.classList.add('d-none');
-    });
+    }
+
+    // Apply the toggle functionality to all tables
+    toggleRows('showAllCurrentBills', 'hideCurrentBills', 'current-bill-row');
+    toggleRows('showAllUpcomingBills', 'hideUpcomingBills', 'upcoming-bill-row');
+    toggleRows('showAllPaidBills', 'hidePaidBills', 'paid-bill-row');
+    toggleRows('showAllFutureBills', 'hideFutureBills', 'future-bill-row');
 </script>
 {% endblock %}

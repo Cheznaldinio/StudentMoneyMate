@@ -7,6 +7,8 @@ from services.group_services import GroupService
 import os
 from werkzeug.utils import secure_filename
 from PIL import Image
+from collections import defaultdict
+from sqlalchemy import func
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -116,7 +118,7 @@ def home():
     user = Users.query.get(user_id)
     current_date = datetime.now()
     two_weeks_from_now = current_date + timedelta(weeks=2)
-    one_month_from_now = current_date + timedelta(weeks=6)
+    one_month_from_now = current_date + timedelta(days=30)
 
     current_bills = Ledger.query.filter(
         Ledger.user_id == user_id,
@@ -140,7 +142,7 @@ def home():
         Ledger.user_id == user_id,
         Ledger.due_date > one_month_from_now,
         Ledger.status == 'owe'
-    ).order_by(Ledger.due_date.asc()).limit(5).all()
+    ).order_by(Ledger.due_date.asc()).all()
 
     all_future_bills = Ledger.query.filter(
         Ledger.user_id == user_id,
@@ -397,9 +399,7 @@ def create_bill():
     user_groups = Groups.query.join(GroupMembers, Groups.group_id == GroupMembers.group_id).filter(GroupMembers.user_id == user_id).all()
     return render_template('create_bill.html', user_groups=user_groups)
 
-from collections import defaultdict
-from datetime import datetime, timedelta
-from flask import render_template, session
+
 
 
 @app.route('/summary')
@@ -416,19 +416,25 @@ def summary():
     outstanding_balance = sum(entry.amount for entry in ledger_entries if entry.status == 'owe')
     projected_spend = outstanding_balance + total_spent
 
-    # Initialize the paid and unpaid data points (grouped by month, using the first of the month)
+    # Get today's date
+    today = datetime.today()
+
+    # Calculate the date range for last 6 months to next 6 months
+    start_date = today.replace(day=1) - timedelta(days=6 * 30)  # Approx. 6 months before
+    end_date = today.replace(day=1) + timedelta(days=6 * 30)    # Approx. 6 months after
+
+    # Initialize the paid and unpaid data points (grouped by month, using the due date)
     paid_data = defaultdict(float)
     unpaid_data = defaultdict(float)
 
-    # Aggregate ledger entries into paid/unpaid based on the month, use first day of month as x-axis label
+    # Aggregate ledger entries into paid/unpaid based on the due date
     for entry in ledger_entries:
-        if entry.status == 'paid':
-            # Ensure date format is consistent ('YYYY-MM-DD')
-            month_year = entry.paid_date.replace(day=1).strftime('%Y-%m-%d')
-            paid_data[month_year] += entry.amount
-        else:
-            month_year = entry.due_date.replace(day=1).strftime('%Y-%m-%d')
-            unpaid_data[month_year] += entry.amount
+        month_year = entry.due_date.replace(day=1).strftime('%Y-%m-%d')  # Use due_date for both paid and unpaid
+        if start_date.strftime('%Y-%m-%d') <= month_year <= end_date.strftime('%Y-%m-%d'):
+            if entry.status == 'paid':
+                paid_data[month_year] += entry.amount
+            else:
+                unpaid_data[month_year] += entry.amount
 
     # Convert the defaultdict to a list of objects for Chart.js
     paid_data = [{'x': month, 'y': amount} for month, amount in sorted(paid_data.items())]
@@ -445,11 +451,14 @@ def summary():
         data_points = [
             {'x': data_entry.timestamp.strftime('%Y-%m-%d'), 'y': data_entry.amount}
             for data_entry in account_data_entries
+            if start_date <= data_entry.timestamp <= end_date
         ]
         bank_account_data[account.account_name] = data_points
 
-    # Fetch money owed entries
-    money_owed = Ledger.query.filter_by(user_id=user_id, status='owe').all()
+    money_owed = db.session.query(
+        Ledger.creditor_name,
+        func.sum(Ledger.amount).label('total_amount')
+    ).filter_by(user_id=user_id, status='owe').group_by(Ledger.creditor_name).all()
 
     return render_template(
         'summary.html',
@@ -461,9 +470,10 @@ def summary():
         paid_data=paid_data,
         unpaid_data=unpaid_data,
         bank_account_data=bank_account_data,
-        money_owed=money_owed
+        money_owed=money_owed,
+        start_date=start_date.strftime('%Y-%m-%d'),
+        end_date=end_date.strftime('%Y-%m-%d')
     )
-
 
 @app.route('/account', methods=['GET'])
 def account():
@@ -488,7 +498,8 @@ def update_account():
         user.password = request.form['new_password']
     if 'profile_picture' in request.files:
         file = request.files['profile_picture']
-        if file == True and checkimg(file.filename):
+        print("New pfp")
+        if file and checkimg(file.filename):
             filename = secure_filename(f"{user_id}.png")
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_' + filename)

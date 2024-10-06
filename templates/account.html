@@ -24,19 +24,6 @@
                 </div>
             </div>
         </div>
-        <div class="details-section mt-4">
-            <h3>Bank Details</h3>
-            {% if bank_details %}
-            <p><strong>Full Name:</strong> {{ bank_details.full_name }}</p>
-            <p><strong>Sort Code:</strong> {{ bank_details.sort_code }}</p>
-            <p><strong>Account Number:</strong> {{ bank_details.account_number }}</p>
-            {% else %}
-            <p>No bank details available.</p>
-            {% endif %}
-        </div>
-        <div class="buttons mt-4">
-            <button type="button" class="btn btn-primary" onclick="toggleEditBank()">Edit Bank Details</button>
-        </div>
     </div>
 
     <form method="POST" action="{{ url_for('update_account') }}" enctype="multipart/form-data">
@@ -72,32 +59,6 @@
             </div>
         </div>
     </form>
-
-    <form method="POST" action="{{ url_for('update_bank_details') }}">
-        <div id="edit-bank-section" class="edit-section" style="display:none;">
-            <div class="row mb-4">
-                <div class="col-md-8 offset-md-2">
-                    <h3>Edit Bank Details</h3>
-                    <div class="form-group">
-                        <label for="full_name">Full Name:</label>
-                        <input type="text" class="form-control" name="full_name" value="{{ bank_details.full_name if bank_details else '' }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="sort_code">Sort Code:</label>
-                        <input type="text" class="form-control" id="sort_code" name="sort_code" value="{{ bank_details.sort_code if bank_details else '' }}" required pattern="\d{2}-\d{2}-\d{2}" title="Sort code must be in the format XX-XX-XX">
-                    </div>
-                    <div class="form-group">
-                        <label for="account_number">Account Number:</label>
-                        <input type="text" class="form-control" id="account_number" name="account_number" value="{{ bank_details.account_number if bank_details else '' }}" required pattern="\d{8}" title="Account number must be 8 digits long">
-                    </div>
-                    <div class="buttons mt-4">
-                        <button type="submit" class="btn btn-success">Save Bank Details</button>
-                        <button type="button" class="btn btn-secondary" onclick="toggleEditBank()">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
 </div>
 
 <script>
@@ -112,30 +73,5 @@
             viewSection.style.display = 'block';
         }
     }
-
-    function toggleEditBank() {
-        var editBankSection = document.getElementById('edit-bank-section');
-        var viewSection = document.getElementById('view-section');
-        if (editBankSection.style.display === 'none') {
-            editBankSection.style.display = 'block';
-            viewSection.style.display = 'none';
-        } else {
-            editBankSection.style.display = 'none';
-            viewSection.style.display = 'block';
-        }
-    }
-
-    document.getElementById('sort_code').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, '').slice(0, 6);
-        if (value.length >= 2) value = value.slice(0, 2) + '-' + value.slice(2);
-        if (value.length >= 5) value = value.slice(0, 5) + '-' + value.slice(5);
-        e.target.value = value;
-    });
-
-    // Restrict account number to 8 digits
-    document.getElementById('account_number').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, '').slice(0, 8);
-        e.target.value = value;
-    });
 </script>
 {% endblock %}
